@@ -1,0 +1,39 @@
+name: Manual Hostinger Deployment & DB Reset
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_reset:
+        description: 'Confirm Database Reset (Will wipe and seed data)'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  deploy-and-seed:
+    name: Deploy to Hostinger and Reset DB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute Remote SSH Commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            echo "Navigating to project directory..."
+            cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+            
+            echo "Pulling latest code from main branch..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            echo "Resetting Database with schema.sql..."
+            mysql -u '${{ secrets.DB_USER }}' -p'${{ secrets.DB_PASS }}' '${{ secrets.DB_NAME }}' < sql/schema.sql
+            
+            echo "Injecting Dummy Data with seed.sql..."
+            mysql -u '${{ secrets.DB_USER }}' -p'${{ secrets.DB_PASS }}' '${{ secrets.DB_NAME }}' < sql/seed.sql
+            
+            echo "Deployment and Database Reset completed successfully!"
