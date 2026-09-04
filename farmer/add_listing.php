@@ -22,6 +22,7 @@ $crops = AGRISYNC_CROPS;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $crop_type = trim($_POST['crop_type'] ?? '');
     $quantity_kg = (float) ($_POST['quantity_kg'] ?? 0);
+    $min_order_quantity = (float) ($_POST['min_order_quantity'] ?? 0);
     $price_per_kg = (float) ($_POST['price_per_kg'] ?? 0);
     $harvest_date = trim($_POST['harvest_date'] ?? '');
     $quality_grade = strtoupper(trim($_POST['quality_grade'] ?? 'B'));
@@ -40,6 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please select a valid crop from the catalog.';
     } elseif ($quantity_kg <= 0) {
         $error = 'Harvest quantity must be greater than 0 kg.';
+    } elseif ($min_order_quantity < 0) {
+        $error = 'Minimum order quantity cannot be negative.';
+    } elseif ($min_order_quantity > $quantity_kg) {
+        $error = 'Minimum order quantity (MOQ) cannot exceed total harvest quantity.';
     } elseif ($price_per_kg <= 0) {
         $error = 'Price per kg must be a positive value.';
     } elseif (empty($harvest_date)) {
@@ -89,14 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db = getDbConnection();
                 $stmt = $db->prepare("
                     INSERT INTO harvest_listings 
-                        (farmer_id, crop_type, quantity_kg, price_per_kg, harvest_date, quality_grade, certifications, image_path, status, created_at, updated_at)
+                        (farmer_id, crop_type, quantity_kg, min_order_quantity, price_per_kg, harvest_date, quality_grade, certifications, image_path, status, created_at, updated_at)
                     VALUES 
-                        (:farmer_id, :crop_type, :quantity_kg, :price_per_kg, :harvest_date, :quality_grade, :certifications, :image_path, 'available', NOW(), NOW())
+                        (:farmer_id, :crop_type, :quantity_kg, :min_order_quantity, :price_per_kg, :harvest_date, :quality_grade, :certifications, :image_path, 'available', NOW(), NOW())
                 ");
                 $stmt->execute([
                     ':farmer_id'     => $user_id,
                     ':crop_type'     => $crop_type,
                     ':quantity_kg'   => $quantity_kg,
+                    ':min_order_quantity' => $min_order_quantity,
                     ':price_per_kg'  => $price_per_kg,
                     ':harvest_date'  => $harvest_date,
                     ':quality_grade' => $quality_grade,
@@ -178,6 +184,15 @@ require_once __DIR__ . '/../includes/navbar.php';
                                 <input type="number" step="10" min="10" name="quantity_kg" id="qtyInput" class="form-control rounded-start-3" placeholder="e.g. 500" required>
                                 <span class="input-group-text bg-light rounded-end-3">kg</span>
                             </div>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="minQtyInput" class="form-label small fw-semibold text-muted">Minimum Order Quantity (MOQ in kg)</label>
+                            <div class="input-group">
+                                <input type="number" step="10" min="0" name="min_order_quantity" id="minQtyInput" class="form-control rounded-start-3" placeholder="e.g. 100 (0 for no min)">
+                                <span class="input-group-text bg-light rounded-end-3">kg</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Optional: Minimum batch size required per buyer order.</small>
                         </div>
 
                         <div class="col-12 col-md-6">

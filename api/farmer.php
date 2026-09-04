@@ -3,6 +3,7 @@
 // Returns JSON formatted response: {"success": bool, "data": array, "error": string|null}
 
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../auth/auth_check.php';
@@ -73,18 +74,23 @@ if ($action === 'get_dashboard') {
         jsonResponse(false, [], 'Method not allowed.', 405);
     }
 
-    $crop_type    = sanitize($_POST['crop_type'] ?? '');
-    $quantity_kg  = (float)($_POST['quantity_kg'] ?? 0);
-    $price_per_kg = (float)($_POST['price_per_kg'] ?? 0);
-    $harvest_date = sanitize($_POST['harvest_date'] ?? '');
+    $crop_type          = sanitize($_POST['crop_type'] ?? '');
+    $quantity_kg        = (float)($_POST['quantity_kg'] ?? 0);
+    $min_order_quantity = (float)($_POST['min_order_quantity'] ?? 0);
+    $price_per_kg       = (float)($_POST['price_per_kg'] ?? 0);
+    $harvest_date       = sanitize($_POST['harvest_date'] ?? '');
 
     if (empty($crop_type) || $quantity_kg <= 0 || $price_per_kg <= 0 || empty($harvest_date)) {
         jsonResponse(false, [], 'Please enter a valid crop type, quantity (>0), price per kg (>0), and harvest date.', 400);
     }
 
+    if ($min_order_quantity < 0 || $min_order_quantity > $quantity_kg) {
+        jsonResponse(false, [], 'Minimum order quantity (MOQ) must be between 0 and total available quantity.', 400);
+    }
+
     try {
-        $stmt = $db->prepare("INSERT INTO harvest_listings (farmer_id, crop_type, quantity_kg, price_per_kg, harvest_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'available', NOW(), NOW())");
-        $stmt->execute([$farmer_id, $crop_type, $quantity_kg, $price_per_kg, $harvest_date]);
+        $stmt = $db->prepare("INSERT INTO harvest_listings (farmer_id, crop_type, quantity_kg, min_order_quantity, price_per_kg, harvest_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'available', NOW(), NOW())");
+        $stmt->execute([$farmer_id, $crop_type, $quantity_kg, $min_order_quantity, $price_per_kg, $harvest_date]);
         $listing_id = (int)$db->lastInsertId();
 
         jsonResponse(true, ['listing_id' => $listing_id], 'Harvest yield listed successfully!');

@@ -125,6 +125,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link <?= $current_page === 'audit_logs.php' ? 'active' : '' ?>" href="<?= $app_url ?>/admin/audit_logs.php">
+                        <i class="bi bi-journal-text text-info"></i>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link <?= $current_page === 'sdg_impact.php' ? 'active' : '' ?>" href="<?= $app_url ?>/admin/sdg_impact.php">
                         <i class="bi bi-globe-americas text-success"></i>
                         <span>SDG Impact</span>

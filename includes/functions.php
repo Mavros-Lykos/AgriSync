@@ -152,6 +152,31 @@ function getStatusBadgeClass(string $status): string {
 }
 
 /**
+ * Record an immutable administrative action entry in admin_audit_logs
+ * 
+ * @param int $admin_id
+ * @param string $action
+ * @param int|null $target_id
+ * @param string $details
+ * @param PDO|null $db
+ * @return bool
+ */
+function logAdminAudit(int $admin_id, string $action, ?int $target_id, string $details, ?PDO $db = null): bool {
+    try {
+        $pdo = $db ?? getDbConnection();
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $stmt = $pdo->prepare("
+            INSERT INTO admin_audit_logs (admin_id, action, target_id, details, ip_address, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        return $stmt->execute([$admin_id, $action, $target_id, $details, $ip]);
+    } catch (Throwable $e) {
+        error_log("Failed to insert admin audit log: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Send an SMS message (Mock implementation for SMS gateway logging)
  * 
  * @param string|null $phone

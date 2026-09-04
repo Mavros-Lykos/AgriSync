@@ -3,6 +3,7 @@
 // Returns JSON formatted response: {"success": bool, "data": array, "error": string|null}
 
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
@@ -74,9 +75,11 @@ if ($action === 'login') {
     $name     = sanitize($_POST['name'] ?? '');
     $email    = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
     $password = trim($_POST['password'] ?? '');
-    $role     = sanitize($_POST['role'] ?? '');
-    $phone    = sanitize($_POST['phone'] ?? '');
-    $district = sanitize($_POST['district'] ?? '');
+    $role            = sanitize($_POST['role'] ?? '');
+    $phone           = sanitize($_POST['phone'] ?? '');
+    $district        = sanitize($_POST['district'] ?? '');
+    $nic_number      = sanitize($_POST['nic_number'] ?? '');
+    $business_reg_no = sanitize($_POST['business_reg_no'] ?? '');
 
     if (empty($name) || !$email || empty($password) || empty($role) || empty($district)) {
         jsonResponse(false, [], 'All required fields (Name, Email, Password, Role, District) must be completed.', 400);
@@ -91,6 +94,21 @@ if ($action === 'login') {
         jsonResponse(false, [], 'Password must be at least 6 characters in length.', 400);
     }
 
+    if ($role === 'farmer') {
+        if (empty($nic_number)) {
+            jsonResponse(false, [], 'National Identity Card (NIC) number is required for farmer registration.', 400);
+        }
+        if (!preg_match('/^([0-9]{9}[xXvV]|[0-9]{12})$/', $nic_number)) {
+            jsonResponse(false, [], 'Invalid Sri Lankan NIC number format. Please provide a valid 9-digit (with V/X) or 12-digit NIC.', 400);
+        }
+        $business_reg_no = null;
+    } elseif ($role === 'business') {
+        if (empty($business_reg_no)) {
+            jsonResponse(false, [], 'Business Registration Number (BRN) is required for commercial buyer registration.', 400);
+        }
+        $nic_number = null;
+    }
+
     try {
         // Check if email already registered
         $check_stmt = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
@@ -101,8 +119,8 @@ if ($action === 'login') {
 
         $password_hash = password_hash($password, PASSWORD_BCRYPT);
 
-        $insert_stmt = $db->prepare("INSERT INTO users (name, email, password_hash, role, phone, district, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
-        $insert_stmt->execute([$name, $email, $password_hash, $role, $phone, $district]);
+        $insert_stmt = $db->prepare("INSERT INTO users (name, email, password_hash, role, phone, district, nic_number, business_reg_no, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
+        $insert_stmt->execute([$name, $email, $password_hash, $role, $phone, $district, $nic_number, $business_reg_no]);
 
         $new_user_id = (int)$db->lastInsertId();
 

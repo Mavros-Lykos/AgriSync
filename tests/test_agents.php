@@ -52,6 +52,9 @@ class TestMockStatement extends PDOStatement {
     public function bindValue($param, $value, $type = PDO::PARAM_STR): bool {
         return true;
     }
+    public function rowCount(): int {
+        return 1;
+    }
     public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed {
         if (stripos($this->sql, 'order_requests o') !== false || stripos($this->sql, 'WHERE o.id') !== false) {
             return [
@@ -88,6 +91,7 @@ class TestMockStatement extends PDOStatement {
                     'farmer_id' => 10,
                     'crop_type' => 'Tomato',
                     'quantity_kg' => 500.00,
+                    'min_order_quantity' => 0.00,
                     'price_per_kg' => 160.00,
                     'harvest_date' => '2026-08-12',
                     'status' => 'available',
@@ -100,6 +104,7 @@ class TestMockStatement extends PDOStatement {
                     'farmer_id' => 11,
                     'crop_type' => 'Tomato',
                     'quantity_kg' => 350.00,
+                    'min_order_quantity' => 0.00,
                     'price_per_kg' => 155.00,
                     'harvest_date' => '2026-08-14',
                     'status' => 'available',
@@ -180,6 +185,90 @@ if (!empty($matchResult['match'])) {
     echo "     -> Matched Price: Rs. {$matchResult['match']['matched_price']}/kg\n";
     echo "     -> AI Reasoning: {$matchResult['match']['agent_reasoning']}\n";
 }
+
+// -----------------------------------------------------------------------------
+// Test 4: Minimum Order Quantity (MOQ) Filtering Guardrail
+// -----------------------------------------------------------------------------
+echo "\n4. Testing Minimum Order Quantity (MOQ) Guardrail...\n";
+
+class TestMOQMockDb extends PDO {
+    public function __construct() {}
+    public function prepare($statement, $options = []): TestMOQMockStatement {
+        return new TestMOQMockStatement($statement);
+    }
+    public function lastInsertId(?string $name = null): string|false {
+        return '1';
+    }
+}
+
+class TestMOQMockStatement extends PDOStatement {
+    private string $sql;
+    private array $params = [];
+    public function __construct(string $sql) {
+        $this->sql = $sql;
+    }
+    public function execute(?array $params = null): bool {
+        $this->params = $params ?? [];
+        return true;
+    }
+    public function rowCount(): int {
+        return 1;
+    }
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed {
+        if (stripos($this->sql, 'order_requests o') !== false || stripos($this->sql, 'WHERE o.id') !== false) {
+            $orderId = (int)($this->params[':order_id'] ?? 1);
+            $qty = ($orderId === 100) ? 100.00 : 600.00;
+            return [
+                'id' => $orderId,
+                'business_id' => 3,
+                'crop_type' => 'Tomato',
+                'quantity_kg' => $qty,
+                'max_price' => 200.00,
+                'delivery_date' => '2026-08-15',
+                'urgency' => 'high',
+                'status' => 'pending',
+                'business_name' => 'Bulk Buyer',
+                'business_district' => 'Colombo',
+                'business_phone' => '0112345678'
+            ];
+        }
+        return false;
+    }
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array {
+        if (stripos($this->sql, 'harvest_listings') !== false) {
+            $reqOrderQty = (float)($this->params[':order_quantity'] ?? 0);
+            $listings = [
+                [
+                    'id' => 1,
+                    'farmer_id' => 10,
+                    'crop_type' => 'Tomato',
+                    'quantity_kg' => 1000.00,
+                    'min_order_quantity' => 500.00, // 500kg MOQ restriction
+                    'price_per_kg' => 160.00,
+                    'harvest_date' => '2026-08-12',
+                    'status' => 'available',
+                    'farmer_name' => 'Bulk Farmer Sunil',
+                    'farmer_district' => 'Dambulla',
+                    'farmer_phone' => '0771234567'
+                ]
+            ];
+            // Filter by MOQ rule: min_order_quantity <= reqOrderQty
+            return array_values(array_filter($listings, fn($l) => $l['min_order_quantity'] <= $reqOrderQty));
+        }
+        return [];
+    }
+}
+
+$moqDb = new TestMOQMockDb();
+$moqBroker = new BrokerAgent($moqDb, $gemini);
+
+// Case 1: Buyer places 100kg order against 500kg MOQ listing -> Must NOT match
+$resSmall = $moqBroker->matchOrder(100);
+assertTest($resSmall['matched'] === false, "Small order (100kg) excludes 500kg MOQ listing");
+
+// Case 2: Buyer places 600kg order against 500kg MOQ listing -> Must MATCH
+$resLarge = $moqBroker->matchOrder(600);
+assertTest($resLarge['matched'] === true, "Large order (600kg) matches 500kg MOQ listing");
 
 // Summary
 echo "\n=======================================================\n";

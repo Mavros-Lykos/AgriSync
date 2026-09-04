@@ -3,6 +3,7 @@
 // Returns JSON formatted response: {"success": bool, "data": array, "error": string|null}
 
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../auth/auth_check.php';
@@ -89,7 +90,7 @@ if ($action === 'get_metrics') {
     }
 
     try {
-        $stmt = $db->prepare("SELECT is_active FROM users WHERE id = ? LIMIT 1");
+        $stmt = $db->prepare("SELECT name, is_active FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$target_user_id]);
         $target = $stmt->fetch();
 
@@ -101,9 +102,52 @@ if ($action === 'get_metrics') {
         $upd_stmt = $db->prepare("UPDATE users SET is_active = ?, updated_at = NOW() WHERE id = ?");
         $upd_stmt->execute([$new_status, $target_user_id]);
 
+        // Insert immutable audit log record
+        $audit_action = ($new_status === 0) ? 'deactivate_user' : 'activate_user';
+        $target_name = $target['name'] ?? ("#USR-" . $target_user_id);
+        $details = "Admin #{$admin_id} " . ($new_status === 0 ? 'deactivated' : 'activated') . " user account #{$target_user_id} ({$target_name}).";
+        logAdminAudit($admin_id, $audit_action, $target_user_id, $details, $db);
+
         jsonResponse(true, ['is_active' => $new_status], 'User account status toggled successfully.');
     } catch (PDOException $e) {
         jsonResponse(false, [], 'Failed to update user account status.', 500);
+    }
+
+} elseif ($action === 'get_audit_logs') {
+    $search = sanitize($_GET['search'] ?? '');
+    $filter_action = sanitize($_GET['filter_action'] ?? 'all');
+    try {
+        $sql = "
+            SELECT a.id, a.admin_id, a.action, a.target_id, a.details, a.ip_address, a.created_at,
+                   u.name as admin_name, u.email as admin_email
+            FROM admin_audit_logs a
+            JOIN users u ON a.admin_id = u.id
+            WHERE 1=1
+        ";
+        $params = [];
+
+        if ($filter_action !== 'all') {
+            $sql .= " AND a.action = ?";
+            $params[] = $filter_action;
+        }
+
+        if (!empty($search)) {
+            $sql .= " AND (u.name LIKE ? OR u.email LIKE ? OR a.details LIKE ? OR a.ip_address LIKE ?)";
+            $term = "%{$search}%";
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+        }
+
+        $sql .= " ORDER BY a.created_at DESC LIMIT 200";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        jsonResponse(true, ['logs' => $logs]);
+    } catch (PDOException $e) {
+        jsonResponse(false, [], 'Failed to fetch audit log history.', 500);
     }
 
 } elseif ($action === 'get_all_listings') {

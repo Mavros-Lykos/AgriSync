@@ -16,6 +16,8 @@ requireRole('business');
 $page_title = 'AI Match Deals';
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 $filter_order_id = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
+$csrf_token = generateCSRFToken();
+
 
 $matches = [];
 $error_msg = '';
@@ -26,12 +28,14 @@ try {
     $sql = "
         SELECT 
             m.id as match_id, m.order_id, m.farmer_id, m.matched_price, m.confidence_score, 
-            m.agent_reasoning, m.status as match_status, m.created_at as matched_date,
+            m.agent_reasoning, m.status as match_status, m.contract_agreed, m.otp_verified, m.created_at as matched_date,
             o.crop_type, o.quantity_kg, o.max_price as requested_max_price, o.delivery_date,
-            u.name as farmer_name, u.district as farmer_district, u.phone as farmer_phone
+            u.name as farmer_name, u.district as farmer_district, u.phone as farmer_phone,
+            p.status as payment_status, p.payhere_payment_id
         FROM order_matches m
         JOIN order_requests o ON m.order_id = o.id
         JOIN users u ON m.farmer_id = u.id
+        LEFT JOIN payments p ON m.id = p.order_match_id
         WHERE m.business_id = :business_id
     ";
     $params = [':business_id' => $user_id];
@@ -174,17 +178,56 @@ require_once __DIR__ . '/../includes/navbar.php';
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div class="mt-auto d-flex gap-2 justify-content-end border-top pt-3">
-                                    <?php if ($deal['match_status'] === 'proposed'): ?>
-                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-3 px-3">Decline</button>
-                                        <button type="button" class="btn btn-success btn-sm rounded-3 px-4 shadow-sm" onclick="acceptDeal(<?= (int)$deal['match_id'] ?>)">
-                                            <i class="bi bi-check-circle-fill me-1"></i> Accept Deal & Lock
-                                        </button>
-                                    <?php else: ?>
-                                        <span class="text-success small fw-semibold d-flex align-items-center">
-                                            <i class="bi bi-patch-check-fill me-1"></i> Direct contract locked
-                                        </span>
-                                    <?php endif; ?>
+                                <div class="mt-auto d-flex flex-wrap gap-2 justify-content-between align-items-center border-top pt-3">
+                                    <div>
+                                        <?php if ((int)$deal['otp_verified'] === 1): ?>
+                                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 small mb-1 me-1">
+                                                <i class="bi bi-file-earmark-check-fill me-1"></i> Contract OTP Verified
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 small mb-1 me-1">
+                                                <i class="bi bi-shield-exclamation me-1"></i> Unsigned Contract
+                                            </span>
+                                        <?php endif; ?>
+
+                                        <?php if ($deal['payment_status'] === 'paid'): ?>
+                                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 small">
+                                                <i class="bi bi-shield-lock-fill me-1"></i> Escrow Paid
+                                            </span>
+                                        <?php elseif ($deal['payment_status'] === 'escrow_released'): ?>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 small">
+                                                <i class="bi bi-check-all me-1"></i> Escrow Released
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted border px-2 py-1 small">
+                                                <i class="bi bi-clock me-1"></i> Escrow Pending
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <?php if ((int)$deal['otp_verified'] !== 1 && $deal['match_status'] === 'proposed'): ?>
+                                            <button type="button" class="btn btn-primary btn-sm rounded-3 px-3 shadow-sm btn-open-po-modal" 
+                                                    data-match-id="<?= (int)$deal['match_id'] ?>"
+                                                    data-crop="<?= htmlspecialchars($deal['crop_type'], ENT_QUOTES, 'UTF-8') ?>"
+                                                    data-qty="<?= (float)$deal['quantity_kg'] ?>"
+                                                    data-price="<?= (float)$deal['matched_price'] ?>"
+                                                    data-total="<?= number_format($total_deal_val, 2) ?>"
+                                                    data-farmer="<?= htmlspecialchars($deal['farmer_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                    data-delivery="<?= htmlspecialchars($deal['delivery_date'], ENT_QUOTES, 'UTF-8') ?>">
+                                                <i class="bi bi-file-earmark-lock-fill me-1"></i> Sign Purchase Order (OTP)
+                                            </button>
+                                        <?php endif; ?>
+
+                                        <?php if ($deal['payment_status'] === 'paid' || $deal['payment_status'] === 'escrow_released'): ?>
+                                            <a href="checkout.php?match_id=<?= (int)$deal['match_id'] ?>" class="btn btn-outline-success btn-sm rounded-3 px-3">
+                                                <i class="bi bi-receipt me-1"></i> Escrow Receipt
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="checkout.php?match_id=<?= (int)$deal['match_id'] ?>" class="btn btn-success btn-sm rounded-3 px-3 shadow-sm" style="background-color: #2D6A4F; border-color: #2D6A4F;">
+                                                <i class="bi bi-credit-card-fill me-1"></i> Pay via PayHere Escrow
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
 
                             </div>
@@ -197,13 +240,236 @@ require_once __DIR__ . '/../includes/navbar.php';
     </div>
 </div>
 
+<!-- Digital Purchase Order Modal -->
+<div class="modal fade" id="contractOtpModal" tabindex="-1" aria-labelledby="contractOtpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header text-white border-0 py-3 rounded-top-4" style="background-color: #2D6A4F !important;">
+                <h5 class="modal-title fw-bold" id="contractOtpModalLabel">
+                    <i class="bi bi-file-earmark-check-fill me-2"></i>Digital Purchase Order Contract
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">
+                    Please review final agreement details before signing the legally binding purchase order with the producer.
+                </p>
+
+                <!-- Contract Summary Box -->
+                <div class="card border-0 bg-light rounded-3 p-3 mb-3">
+                    <div class="row g-2 text-dark small">
+                        <div class="col-6 col-md-4">
+                            <span class="text-muted d-block extra-small">Match Ref</span>
+                            <strong id="poMatchId">#--</strong>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="text-muted d-block extra-small">Crop Type</span>
+                            <strong id="poCrop">--</strong>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="text-muted d-block extra-small">Order Quantity</span>
+                            <strong id="poQuantity">--</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mt-2">
+                            <span class="text-muted d-block extra-small">Price per Kg</span>
+                            <strong class="text-success" id="poPrice">--</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mt-2">
+                            <span class="text-muted d-block extra-small">Total Value</span>
+                            <strong class="text-dark fs-6" id="poTotal">--</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mt-2">
+                            <span class="text-muted d-block extra-small">Producer / Farmer</span>
+                            <strong id="poFarmer">--</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terms Checkbox -->
+                <div class="form-check mb-4 p-3 bg-white border rounded-3 ms-0">
+                    <input class="form-check-input ms-1 me-2" type="checkbox" id="contractAgreedCheck">
+                    <label class="form-check-label text-dark fw-semibold small" for="contractAgreedCheck">
+                        I agree to the terms of this transaction, agricultural quality standards, and AgriSync escrow fulfillment rules.
+                    </label>
+                </div>
+
+                <!-- OTP Section -->
+                <div class="p-3 bg-light rounded-3 border">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-lock-fill text-success me-1"></i>One-Time Password (OTP) Verification</h6>
+                    <p class="extra-small text-muted mb-3">Click "Send OTP" to receive a 6-digit verification code on your registered mobile number.</p>
+
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-5">
+                            <button type="button" class="btn btn-outline-success btn-sm w-100 py-2 fw-semibold" id="btnSendOtp">
+                                <i class="bi bi-send-fill me-1"></i> Send OTP Code
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <input type="text" class="form-control form-control-sm text-center fw-bold fs-5 tracking-wider" id="inputOtpCode" maxlength="6" placeholder="Enter 6-digit OTP" disabled>
+                        </div>
+                    </div>
+
+                    <div id="otpAlertBox" class="mt-3 d-none"></div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 pe-4 pb-4">
+                <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success rounded-3 px-4 shadow-sm" id="btnVerifyOtp" disabled style="background-color: #2D6A4F; border-color: #2D6A4F;">
+                    <i class="bi bi-check-circle-fill me-1"></i> Verify OTP & Sign Contract
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-function acceptDeal(matchId) {
-    if (confirm('Accept this direct farm trade deal and notify the producer?')) {
-        alert('Deal accepted! Logistic coordination instructions dispatched to both parties.');
-        window.location.reload();
-    }
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const csrfToken = '<?= $csrf_token ?>';
+    const contractModalEl = document.getElementById('contractOtpModal');
+    if (!contractModalEl) return;
+
+    const contractModal = new bootstrap.Modal(contractModalEl);
+
+    const poMatchId = document.getElementById('poMatchId');
+    const poCrop = document.getElementById('poCrop');
+    const poQuantity = document.getElementById('poQuantity');
+    const poPrice = document.getElementById('poPrice');
+    const poTotal = document.getElementById('poTotal');
+    const poFarmer = document.getElementById('poFarmer');
+
+    const contractAgreedCheck = document.getElementById('contractAgreedCheck');
+    const btnSendOtp = document.getElementById('btnSendOtp');
+    const inputOtpCode = document.getElementById('inputOtpCode');
+    const btnVerifyOtp = document.getElementById('btnVerifyOtp');
+    const otpAlertBox = document.getElementById('otpAlertBox');
+
+    let activeMatchId = null;
+
+    document.querySelectorAll('.btn-open-po-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeMatchId = btn.getAttribute('data-match-id');
+            poMatchId.textContent = `#MATCH-${activeMatchId}`;
+            poCrop.textContent = btn.getAttribute('data-crop');
+            poQuantity.textContent = `${parseFloat(btn.getAttribute('data-qty')).toLocaleString()} kg`;
+            poPrice.textContent = `Rs. ${parseFloat(btn.getAttribute('data-price')).toFixed(2)} / kg`;
+            poTotal.textContent = `Rs. ${btn.getAttribute('data-total')}`;
+            poFarmer.textContent = btn.getAttribute('data-farmer');
+
+            // Reset modal state
+            contractAgreedCheck.checked = false;
+            inputOtpCode.value = '';
+            inputOtpCode.disabled = true;
+            btnVerifyOtp.disabled = true;
+            otpAlertBox.className = 'mt-3 d-none';
+            otpAlertBox.textContent = '';
+
+            contractModal.show();
+        });
+    });
+
+    contractAgreedCheck.addEventListener('change', () => {
+        if (inputOtpCode.value.length === 6 && contractAgreedCheck.checked) {
+            btnVerifyOtp.disabled = false;
+        } else {
+            btnVerifyOtp.disabled = true;
+        }
+    });
+
+    inputOtpCode.addEventListener('input', () => {
+        inputOtpCode.value = inputOtpCode.value.replace(/[^0-9]/g, '');
+        if (inputOtpCode.value.length === 6 && contractAgreedCheck.checked) {
+            btnVerifyOtp.disabled = false;
+        } else {
+            btnVerifyOtp.disabled = true;
+        }
+    });
+
+    btnSendOtp.addEventListener('click', async () => {
+        if (!activeMatchId) return;
+
+        btnSendOtp.disabled = true;
+        btnSendOtp.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+        otpAlertBox.className = 'mt-3 d-none';
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'send_otp');
+            formData.append('match_id', activeMatchId);
+            formData.append('csrf_token', csrfToken);
+
+            const res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                inputOtpCode.disabled = false;
+                inputOtpCode.focus();
+                
+                let msg = result.data.message || 'OTP sent to mobile.';
+                if (result.data.mock_otp) {
+                    msg += ` [DEMO MOCK OTP: ${result.data.mock_otp}]`;
+                    inputOtpCode.value = result.data.mock_otp;
+                    if (contractAgreedCheck.checked) btnVerifyOtp.disabled = false;
+                }
+
+                otpAlertBox.className = 'alert alert-success extra-small mt-3 mb-0';
+                otpAlertBox.textContent = msg;
+            } else {
+                otpAlertBox.className = 'alert alert-danger extra-small mt-3 mb-0';
+                otpAlertBox.textContent = result.error || 'Failed to dispatch OTP.';
+            }
+        } catch (err) {
+            otpAlertBox.className = 'alert alert-danger extra-small mt-3 mb-0';
+            otpAlertBox.textContent = 'Server connection error.';
+        } finally {
+            btnSendOtp.disabled = false;
+            btnSendOtp.innerHTML = '<i class="bi bi-send-fill me-1"></i> Resend OTP Code';
+        }
+    });
+
+    btnVerifyOtp.addEventListener('click', async () => {
+        if (!activeMatchId || !contractAgreedCheck.checked || inputOtpCode.value.length !== 6) return;
+
+        btnVerifyOtp.disabled = true;
+        btnVerifyOtp.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verifying...';
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'verify_otp');
+            formData.append('match_id', activeMatchId);
+            formData.append('otp_code', inputOtpCode.value);
+            formData.append('contract_agreed', '1');
+            formData.append('csrf_token', csrfToken);
+
+            const res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                otpAlertBox.className = 'alert alert-success extra-small mt-3 mb-0';
+                otpAlertBox.textContent = 'Contract signed & verified successfully! Reloading page...';
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1200);
+            } else {
+                otpAlertBox.className = 'alert alert-danger extra-small mt-3 mb-0';
+                otpAlertBox.textContent = result.error || 'Invalid OTP code. Verification failed.';
+                btnVerifyOtp.disabled = false;
+                btnVerifyOtp.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Verify OTP & Sign Contract';
+            }
+        } catch (err) {
+            otpAlertBox.className = 'alert alert-danger extra-small mt-3 mb-0';
+            otpAlertBox.textContent = 'Server connection error during verification.';
+            btnVerifyOtp.disabled = false;
+            btnVerifyOtp.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Verify OTP & Sign Contract';
+        }
+    });
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+

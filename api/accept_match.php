@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../auth/auth_check.php';

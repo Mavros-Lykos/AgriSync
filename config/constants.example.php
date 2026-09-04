@@ -30,6 +30,12 @@ define('APP_NAME', 'AgriSync');
 define('FAIR_TRADE_MIN_MULTIPLIER', 1.2); // Minimum 20% margin above base cost
 define('APP_ENV', 'development'); // 'development' or 'production'
 
+// PayHere Payment Gateway Settings
+define('PAYHERE_MERCHANT_ID', '1220000'); // Merchant Sandbox ID
+define('PAYHERE_MERCHANT_SECRET', '4Mx8365287415493218526541598452'); // Merchant Secret Key
+define('PAYHERE_MODE', 'sandbox'); // 'sandbox' or 'live'
+define('PAYHERE_CURRENCY', 'LKR');
+
 // Standardized Crop Catalog
 define('AGRISYNC_CROPS', [
     'Tomato', 'Carrot', 'Big Onion', 'Bell Pepper', 'Potato', 

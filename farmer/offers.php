@@ -123,34 +123,72 @@ require_once __DIR__ . '/../includes/navbar.php';
     </div>
 </div>
 
-<!-- Offer Decision Confirmation Modal -->
+<!-- Offer Decision & Digital Contract Confirmation Modal -->
 <div class="modal fade" id="decisionModal" tabindex="-1" aria-labelledby="decisionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="decisionModalLabel">Confirm Decision</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header text-white border-0 py-3 rounded-top-4" style="background-color: #2D6A4F !important;">
+                <h5 class="modal-title fw-bold" id="decisionModalLabel">
+                    <i class="bi bi-file-earmark-check-fill me-2"></i>Digital Sales Order Contract
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body py-4">
-                <p id="decisionModalMessage" class="text-secondary mb-3"></p>
-                <div class="p-3 bg-light rounded-3 mb-3 border">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-muted extra-small">Crop:</span>
-                        <span class="fw-bold extra-small" id="modalCrop"></span>
+            <div class="modal-body p-4">
+                <p id="decisionModalMessage" class="text-secondary small mb-3"></p>
+
+                <!-- Contract Summary Box -->
+                <div class="card border-0 bg-light rounded-3 p-3 mb-3">
+                    <div class="row g-2 text-dark small">
+                        <div class="col-6 col-md-4">
+                            <span class="text-muted d-block extra-small">Crop:</span>
+                            <strong id="modalCrop">--</strong>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="text-muted d-block extra-small">Quantity:</span>
+                            <strong id="modalQuantity">--</strong>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="text-muted d-block extra-small">Agreed Unit Price:</span>
+                            <strong class="text-success" id="modalPrice">--</strong>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="text-muted extra-small">Quantity:</span>
-                        <span class="fw-bold extra-small" id="modalQuantity"></span>
+                </div>
+
+                <div id="contractOtpSection">
+                    <!-- Terms Checkbox -->
+                    <div class="form-check mb-3 p-3 bg-white border rounded-3 ms-0">
+                        <input class="form-check-input ms-1 me-2" type="checkbox" id="farmerAgreedCheck">
+                        <label class="form-check-label text-dark fw-semibold small" for="farmerAgreedCheck">
+                            I agree to the legally binding terms of this sales order, produce delivery timeline, and AgriSync fair trade terms.
+                        </label>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <span class="text-muted extra-small">Agreed Unit Price:</span>
-                        <span class="fw-bold text-success extra-small" id="modalPrice"></span>
+
+                    <!-- OTP Section -->
+                    <div class="p-3 bg-light rounded-3 border mb-2">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-lock-fill text-success me-1"></i>One-Time Password (OTP) Verification</h6>
+                        <p class="extra-small text-muted mb-3">Click "Send OTP" to receive a 6-digit verification code on your mobile phone.</p>
+
+                        <div class="row g-2 align-items-center">
+                            <div class="col-12 col-md-5">
+                                <button type="button" class="btn btn-outline-success btn-sm w-100 py-2 fw-semibold" id="btnFarmerSendOtp">
+                                    <i class="bi bi-send-fill me-1"></i> Send OTP Code
+                                </button>
+                            </div>
+                            <div class="col-12 col-md-7">
+                                <input type="text" class="form-control form-control-sm text-center fw-bold fs-5 tracking-wider" id="inputFarmerOtp" maxlength="6" placeholder="Enter 6-digit OTP" disabled>
+                            </div>
+                        </div>
+
+                        <div id="farmerOtpAlertBox" class="mt-3 d-none"></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="btnConfirmDecision">Confirm</button>
+
+            <div class="modal-footer border-0 pt-0 pe-4 pb-4">
+                <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success rounded-3 px-4 shadow-sm" id="btnConfirmDecision" style="background-color: #2D6A4F; border-color: #2D6A4F;">
+                    <i class="bi bi-check-circle-fill me-1"></i> Confirm & Sign
+                </button>
             </div>
         </div>
     </div>
@@ -344,6 +382,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Attach action handlers
+        const contractOtpSection = document.getElementById('contractOtpSection');
+        const farmerAgreedCheck = document.getElementById('farmerAgreedCheck');
+        const btnFarmerSendOtp = document.getElementById('btnFarmerSendOtp');
+        const inputFarmerOtp = document.getElementById('inputFarmerOtp');
+        const farmerOtpAlertBox = document.getElementById('farmerOtpAlertBox');
+
+        farmerAgreedCheck.addEventListener('change', () => {
+            if (currentActionType === 'accept') {
+                btnConfirmDecision.disabled = !(farmerAgreedCheck.checked && inputFarmerOtp.value.length === 6);
+            }
+        });
+
+        inputFarmerOtp.addEventListener('input', () => {
+            inputFarmerOtp.value = inputFarmerOtp.value.replace(/[^0-9]/g, '');
+            if (currentActionType === 'accept') {
+                btnConfirmDecision.disabled = !(farmerAgreedCheck.checked && inputFarmerOtp.value.length === 6);
+            }
+        });
+
+        btnFarmerSendOtp.addEventListener('click', async () => {
+            if (!currentActionMatchId) return;
+
+            btnFarmerSendOtp.disabled = true;
+            btnFarmerSendOtp.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+            farmerOtpAlertBox.className = 'mt-3 d-none';
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'send_otp');
+                formData.append('match_id', currentActionMatchId);
+                formData.append('csrf_token', csrfToken);
+
+                const res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    inputFarmerOtp.disabled = false;
+                    inputFarmerOtp.focus();
+
+                    let msg = result.data.message || 'OTP sent.';
+                    if (result.data.mock_otp) {
+                        msg += ` [DEMO MOCK OTP: ${result.data.mock_otp}]`;
+                        inputFarmerOtp.value = result.data.mock_otp;
+                        if (farmerAgreedCheck.checked) btnConfirmDecision.disabled = false;
+                    }
+
+                    farmerOtpAlertBox.className = 'alert alert-success extra-small mt-3 mb-0';
+                    farmerOtpAlertBox.textContent = msg;
+                } else {
+                    farmerOtpAlertBox.className = 'alert alert-danger extra-small mt-3 mb-0';
+                    farmerOtpAlertBox.textContent = result.error || 'Failed to dispatch OTP.';
+                }
+            } catch (err) {
+                farmerOtpAlertBox.className = 'alert alert-danger extra-small mt-3 mb-0';
+                farmerOtpAlertBox.textContent = 'Server connection error.';
+            } finally {
+                btnFarmerSendOtp.disabled = false;
+                btnFarmerSendOtp.innerHTML = '<i class="bi bi-send-fill me-1"></i> Resend OTP Code';
+            }
+        });
+
         document.querySelectorAll('.btn-offer-action').forEach(btn => {
             btn.addEventListener('click', () => {
                 currentActionMatchId = btn.getAttribute('data-id');
@@ -357,16 +459,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modalQuantity').textContent = `${qty} kg`;
                 document.getElementById('modalPrice').textContent = `Rs. ${price} / kg`;
 
+                farmerAgreedCheck.checked = false;
+                inputFarmerOtp.value = '';
+                inputFarmerOtp.disabled = true;
+                farmerOtpAlertBox.className = 'mt-3 d-none';
+
                 if (currentActionType === 'accept') {
-                    document.getElementById('decisionModalLabel').textContent = 'Accept Purchase Offer';
-                    document.getElementById('decisionModalMessage').textContent = 'Are you sure you want to accept this purchase offer? The buyer will be notified to begin fulfillment.';
+                    document.getElementById('decisionModalLabel').innerHTML = '<i class="bi bi-file-earmark-check-fill me-2"></i>Sign Sales Order Contract (OTP)';
+                    document.getElementById('decisionModalMessage').textContent = 'Review agreement details and verify OTP to confirm legally binding sale to the buyer.';
+                    contractOtpSection.style.display = 'block';
                     btnConfirmDecision.className = 'btn btn-success';
-                    btnConfirmDecision.textContent = 'Accept & Confirm Deal';
+                    btnConfirmDecision.textContent = 'Verify OTP & Confirm Contract';
+                    btnConfirmDecision.disabled = true;
                 } else {
-                    document.getElementById('decisionModalLabel').textContent = 'Decline Offer';
-                    document.getElementById('decisionModalMessage').textContent = 'Are you sure you want to decline this offer? The AI broker will seek alternative matches.';
+                    document.getElementById('decisionModalLabel').innerHTML = '<i class="bi bi-x-circle me-2"></i>Decline Purchase Offer';
+                    document.getElementById('decisionModalMessage').textContent = 'Are you sure you want to decline this offer? The AI broker will seek alternative buyer matches.';
+                    contractOtpSection.style.display = 'none';
                     btnConfirmDecision.className = 'btn btn-danger';
                     btnConfirmDecision.textContent = 'Decline Offer';
+                    btnConfirmDecision.disabled = false;
                 }
 
                 decisionModal.show();
@@ -381,29 +492,46 @@ document.addEventListener('DOMContentLoaded', () => {
         btnConfirmDecision.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing...';
 
         try {
-            const formData = new FormData();
-            formData.append('action', 'match_decision');
-            formData.append('match_id', currentActionMatchId);
-            formData.append('decision', currentActionType);
-            formData.append('csrf_token', csrfToken);
+            let res, result;
 
-            const res = await fetch('<?= APP_URL ?>/api/farmer.php?action=match_decision', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRF-TOKEN': csrfToken }
-            });
-            const result = await res.json();
+            if (currentActionType === 'accept') {
+                const formData = new FormData();
+                formData.append('action', 'verify_otp');
+                formData.append('match_id', currentActionMatchId);
+                formData.append('otp_code', inputFarmerOtp.value);
+                formData.append('contract_agreed', '1');
+                formData.append('csrf_token', csrfToken);
+
+                res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                result = await res.json();
+            } else {
+                const formData = new FormData();
+                formData.append('action', 'match_decision');
+                formData.append('match_id', currentActionMatchId);
+                formData.append('decision', currentActionType);
+                formData.append('csrf_token', csrfToken);
+
+                res = await fetch('<?= APP_URL ?>/api/farmer.php?action=match_decision', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                });
+                result = await res.json();
+            }
 
             if (result.success) {
-                showToast(result.error || `Offer ${currentActionType === 'accept' ? 'accepted' : 'declined'} successfully!`, 'success');
+                showToast(result.error || `Offer ${currentActionType === 'accept' ? 'contract verified and signed' : 'declined'} successfully!`, 'success');
                 decisionModal.hide();
                 loadOffers();
             } else {
                 showToast(result.error || 'Failed to submit match decision.', 'error');
+                btnConfirmDecision.disabled = false;
             }
         } catch (err) {
             showToast('Server error while processing decision.', 'error');
-        } finally {
             btnConfirmDecision.disabled = false;
         }
     });

@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `role` enum('farmer','business','admin') NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `district` varchar(50) DEFAULT NULL,
+  `nic_number` varchar(20) DEFAULT NULL,
+  `business_reg_no` varchar(50) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `reset_token` varchar(64) DEFAULT NULL,
   `reset_expires` datetime DEFAULT NULL,
@@ -65,6 +67,7 @@ CREATE TABLE IF NOT EXISTS `harvest_listings` (
   `farmer_id` int(11) NOT NULL,
   `crop_type` varchar(50) NOT NULL,
   `quantity_kg` decimal(10,2) NOT NULL,
+  `min_order_quantity` decimal(10,2) NOT NULL DEFAULT 0.00,
   `quantity_reserved` decimal(10,2) NOT NULL DEFAULT 0.00,
   `price_per_kg` decimal(10,2) NOT NULL,
   `harvest_date` date NOT NULL,
@@ -117,7 +120,10 @@ CREATE TABLE IF NOT EXISTS `order_matches` (
   `matched_quantity` decimal(10,2) NOT NULL DEFAULT 0.00,
   `agent_reasoning` text NOT NULL,
   `confidence_score` int(11) NOT NULL,
-  `status` enum('proposed','accepted','in_transit','delivered','completed','rejected','expired') NOT NULL DEFAULT 'proposed',
+  `status` enum('proposed','accepted','contract_signed','in_transit','delivered','completed','rejected','expired') NOT NULL DEFAULT 'proposed',
+  `contract_agreed` tinyint(1) NOT NULL DEFAULT 0,
+  `otp_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `otp_code` varchar(6) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -166,6 +172,41 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+-- Table structure for table `admin_audit_logs`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `admin_audit_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `admin_id` int(11) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `target_id` int(11) DEFAULT NULL,
+  `details` text DEFAULT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `admin_id_index` (`admin_id`),
+  KEY `action_index` (`action`),
+  KEY `created_at_index` (`created_at`),
+  CONSTRAINT `fk_audit_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `payments`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `payments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_match_id` int(11) NOT NULL,
+  `payhere_payment_id` varchar(100) DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `status` enum('pending','paid','escrow_released','failed') NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `order_match_id_index` (`order_match_id`),
+  KEY `status_index` (`status`),
+  CONSTRAINT `fk_payment_match` FOREIGN KEY (`order_match_id`) REFERENCES `order_matches` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
 -- Table structure for table `user_reviews`
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `user_reviews` (
@@ -201,3 +242,4 @@ CREATE TABLE IF NOT EXISTS `demand_cache` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;
+
