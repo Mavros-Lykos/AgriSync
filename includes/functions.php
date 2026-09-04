@@ -8,7 +8,7 @@
  * @param mixed $input
  * @return mixed
  */
-function sanitize(mixed $input): mixed {
+function sanitize($input) {
     if (is_array($input)) {
         return array_map('sanitize', $input);
     }
@@ -97,7 +97,7 @@ function validateCSRFToken(?string $token): bool {
  * @param string|int|null $datetime
  * @return string
  */
-function timeAgo(string|int|null $datetime): string {
+function timeAgo($datetime): string {
     if (!$datetime) {
         return 'N/A';
     }
@@ -128,7 +128,7 @@ function timeAgo(string|int|null $datetime): string {
  * @param float|int|string|null $amount
  * @return string
  */
-function formatCurrency(float|int|string|null $amount): string {
+function formatCurrency($amount): string {
     return 'Rs. ' . number_format((float)$amount, 2);
 }
 
@@ -139,16 +139,33 @@ function formatCurrency(float|int|string|null $amount): string {
  * @return string
  */
 function getStatusBadgeClass(string $status): string {
-    return match (strtolower(trim($status))) {
-        'pending', 'proposed'                     => 'badge-pending',
-        'matching'                                 => 'badge-matching',
-        'matched'                                  => 'badge-matched',
-        'accepted', 'available'                    => 'badge-accepted',
-        'in transit', 'in_transit'                 => 'badge-in-transit',
-        'delivered', 'sold', 'fulfilled', 'completed' => 'badge-delivered',
-        'cancelled', 'rejected', 'expired'         => 'badge-cancelled',
-        default                                    => 'badge-status-secondary',
-    };
+    $status = strtolower(trim($status));
+    switch ($status) {
+        case 'pending':
+        case 'proposed':
+            return 'badge-pending';
+        case 'matching':
+            return 'badge-matching';
+        case 'matched':
+            return 'badge-matched';
+        case 'accepted':
+        case 'available':
+            return 'badge-accepted';
+        case 'in transit':
+        case 'in_transit':
+            return 'badge-in-transit';
+        case 'delivered':
+        case 'sold':
+        case 'fulfilled':
+        case 'completed':
+            return 'badge-delivered';
+        case 'cancelled':
+        case 'rejected':
+        case 'expired':
+            return 'badge-cancelled';
+        default:
+            return 'badge-status-secondary';
+    }
 }
 
 /**
@@ -161,7 +178,7 @@ function getStatusBadgeClass(string $status): string {
  * @param PDO|null $db
  * @return bool
  */
-function logAdminAudit(int $admin_id, string $action, ?int $target_id, string $details, ?PDO $db = null): bool {
+function logAdminAudit(int $admin_id, string $action, ?int $target_id, string $details, $db = null): bool {
     try {
         $pdo = $db ?? getDbConnection();
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
