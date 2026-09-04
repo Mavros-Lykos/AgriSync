@@ -41,10 +41,8 @@ if (is_array($input_data)) {
 $header_csrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
 $submitted_csrf = $header_csrf ?? $submitted_csrf;
 
-if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['csrf_token'])) {
-    if (!validateCSRFToken($submitted_csrf)) {
-        jsonResponse(false, null, 'CSRF security token verification failed.', 403);
-    }
+if (!validateCSRFToken($submitted_csrf)) {
+    jsonResponse(false, null, 'CSRF security token verification failed.', 403);
 }
 
 if ($order_match_id <= 0) {
