@@ -36,7 +36,7 @@ try {
     ";
     $params = [':business_id' => $user_id];
 
-    if ($status_filter !== 'all' && in_array($status_filter, ['pending', 'matching', 'matched', 'fulfilled', 'cancelled'])) {
+    if ($status_filter !== 'all' && in_array($status_filter, ['pending', 'matching', 'matched', 'in_transit', 'fulfilled', 'cancelled'])) {
         $sql .= " AND o.status = :status";
         $params[':status'] = $status_filter;
     }
@@ -94,6 +94,9 @@ require_once __DIR__ . '/../includes/navbar.php';
                         <a class="nav-link <?= $status_filter === 'matched' ? 'active bg-primary' : 'text-dark' ?>" href="orders.php?status=matched">AI Matched</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?= $status_filter === 'in_transit' ? 'active bg-primary' : 'text-dark' ?>" href="orders.php?status=in_transit">In Transit</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?= $status_filter === 'fulfilled' ? 'active bg-primary' : 'text-dark' ?>" href="orders.php?status=fulfilled">Fulfilled</a>
                     </li>
                     <li class="nav-item">
@@ -133,7 +136,8 @@ require_once __DIR__ . '/../includes/navbar.php';
                                         $badge = 'bg-secondary-subtle text-secondary';
                                         if ($st === 'matching') $badge = 'bg-warning-subtle text-warning';
                                         if ($st === 'matched') $badge = 'bg-success-subtle text-success';
-                                        if ($st === 'fulfilled') $badge = 'bg-info-subtle text-info';
+                                        if ($st === 'in_transit') $badge = 'bg-info-subtle text-info fw-bold';
+                                        if ($st === 'fulfilled') $badge = 'bg-success-subtle text-success';
                                         if ($st === 'cancelled') $badge = 'bg-danger-subtle text-danger';
                                     ?>
                                     <tr>
@@ -158,7 +162,7 @@ require_once __DIR__ . '/../includes/navbar.php';
                                         </td>
                                         <td>
                                             <span class="badge rounded-pill <?= $badge ?> px-2 py-1 text-capitalize">
-                                                <?= htmlspecialchars($st, ENT_QUOTES, 'UTF-8') ?>
+                                                <?= htmlspecialchars(str_replace('_', ' ', $st), ENT_QUOTES, 'UTF-8') ?>
                                             </span>
                                         </td>
                                         <td>
@@ -180,11 +184,16 @@ require_once __DIR__ . '/../includes/navbar.php';
                                                     <a href="matches.php?order_id=<?= (int)$o['id'] ?>" class="btn btn-sm btn-outline-success rounded-3 px-2 py-1">
                                                         <i class="bi bi-robot"></i> Review
                                                     </a>
+                                                    <?php if ($o['match_status'] === 'in_transit' || $o['status'] === 'in_transit'): ?>
+                                                        <button type="button" class="btn btn-sm btn-success rounded-3 px-2 py-1 fw-semibold btn-confirm-pod" data-match-id="<?= (int)$o['match_id'] ?>">
+                                                            <i class="bi bi-box-seam-fill me-1"></i> Confirm Receipt (POD)
+                                                        </button>
+                                                    <?php endif; ?>
                                                     <?php if (!empty($o['review_id'])): ?>
                                                         <span class="btn btn-sm btn-light border text-success rounded-3 px-2 py-1 disabled">
                                                             <i class="bi bi-star-fill text-warning me-1"></i> Reviewed (<?= (int)$o['review_rating'] ?>★)
                                                         </span>
-                                                    <?php else: ?>
+                                                    <?php elseif ($o['status'] === 'fulfilled' || $o['match_status'] === 'delivered'): ?>
                                                         <button type="button" class="btn btn-sm btn-warning text-dark rounded-3 px-2 py-1 fw-semibold" onclick="openReviewModal(<?= (int)$o['match_id'] ?>, '<?= htmlspecialchars($o['farmer_name'] ?? 'Producer', ENT_QUOTES, 'UTF-8') ?>')">
                                                             <i class="bi bi-star-fill me-1"></i> Leave Review
                                                         </button>
@@ -304,6 +313,47 @@ document.querySelectorAll('#starContainer .star-btn').forEach(star => {
     });
 });
 
+document.querySelectorAll('.btn-confirm-pod').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to confirm Proof of Delivery (POD)? Escrow funds will be released to the producer.')) {
+            return;
+        }
+
+        const matchId = parseInt(this.getAttribute('data-match-id'));
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Confirming...';
+
+        try {
+            const res = await fetch('../api/update_delivery_status.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': '<?= generateCSRFToken() ?>'
+                },
+                body: JSON.stringify({
+                    match_id: matchId,
+                    status: 'delivered',
+                    csrf_token: '<?= generateCSRFToken() ?>'
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                alert(data.data.message || 'Delivery confirmed successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to confirm delivery.'));
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-box-seam-fill me-1"></i> Confirm Receipt (POD)';
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-box-seam-fill me-1"></i> Confirm Receipt (POD)';
+        }
+    });
+});
+
 document.getElementById('reviewForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -353,3 +403,4 @@ document.getElementById('reviewForm').addEventListener('submit', async function(
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
