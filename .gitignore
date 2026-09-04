@@ -1,5 +1,8 @@
 config/constants.php
 uploads/
+backups/*.sql
+backups/*.sql.gz
+backups/*.json
 .env
 *.log
 .DS_Store
@@ -9,4 +12,3 @@ create_issues.php
 setup_github.php
 github_issue_format.md
 implementation_plan.md
-

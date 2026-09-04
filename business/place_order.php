@@ -16,10 +16,20 @@ requireRole('business');
 $page_title = 'Place Commercial Order';
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 
-$prefill_crop = sanitize($_GET['crop'] ?? '');
+$prefill_crop = sanitize($_GET['crop_type'] ?? ($_GET['crop'] ?? ''));
+$prefill_qty = isset($_GET['quantity_preset']) ? (float)$_GET['quantity_preset'] : (isset($_GET['quantity_kg']) ? (float)$_GET['quantity_kg'] : '');
 $prefill_max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : '';
+$prefill_farmer_id = isset($_GET['farmer_id']) ? (int)$_GET['farmer_id'] : 0;
+$prefill_listing_id = isset($_GET['listing_id']) ? (int)$_GET['listing_id'] : 0;
 
-$crops = AGRISYNC_CROPS;
+$crops = defined('AGRISYNC_CROPS') && is_array(AGRISYNC_CROPS) ? AGRISYNC_CROPS : ['Tomato', 'Carrot', 'Big Onion', 'Bell Pepper', 'Potato', 'Cabbage', 'Leeks', 'Green Beans', 'Green Chili', 'Banana', 'Papaya', 'Pumpkin', 'Brinjal'];
+
+// Validate crop_type against AGRISYNC_CROPS constants before pre-filling to prevent XSS or invalid selections
+if (!empty($prefill_crop)) {
+    if (!in_array($prefill_crop, $crops, true)) {
+        $prefill_crop = '';
+    }
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/navbar.php';
@@ -74,7 +84,7 @@ require_once __DIR__ . '/../includes/navbar.php';
                         <div class="col-12 col-md-6">
                             <label for="qtyInput" class="form-label small fw-semibold text-muted">Required Volume (kg)</label>
                             <div class="input-group">
-                                <input type="number" step="50" min="50" name="quantity_kg" id="qtyInput" class="form-control rounded-start-3" placeholder="e.g. 500" required>
+                                <input type="number" step="1" min="1" name="quantity_kg" id="qtyInput" class="form-control rounded-start-3" placeholder="e.g. 500" value="<?= $prefill_qty !== '' ? (float)$prefill_qty : '' ?>" required>
                                 <span class="input-group-text bg-light rounded-end-3">kg</span>
                             </div>
                         </div>
@@ -177,21 +187,12 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         return;
     }
 
-    // Show AI Processing Overlay
+    // Show Submitting Indicator
     overlay.classList.remove('d-none');
     overlay.classList.add('d-flex');
+    stepText.textContent = "Submitting commercial order request...";
+    progressBar.style.width = "100%";
     submitBtn.disabled = true;
-
-    // Simulate progressive telemetry steps
-    setTimeout(() => {
-        stepText.textContent = "Scanning verified farmer harvest listings across Sri Lanka...";
-        progressBar.style.width = "60%";
-    }, 600);
-
-    setTimeout(() => {
-        stepText.textContent = "Calculating fair-trade price bounds & Gemini AI reasoning...";
-        progressBar.style.width = "85%";
-    }, 1200);
 
     try {
         const response = await fetch('../api/place_order.php', {
@@ -204,20 +205,8 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
 
         const res = await response.json();
 
-        progressBar.style.width = "100%";
-
         if (res.success) {
-            if (res.matched && res.order_id) {
-                stepText.textContent = "AI Match Found! Redirecting to deal review...";
-                setTimeout(() => {
-                    window.location.href = `matches.php?order_id=${res.order_id}`;
-                }, 800);
-            } else {
-                stepText.textContent = "Order placed! Queued for candidate matchmaking...";
-                setTimeout(() => {
-                    window.location.href = `orders.php?order_id=${res.order_id}&status=queued`;
-                }, 800);
-            }
+            window.location.href = `orders.php?status=pending`;
         } else {
             overlay.classList.add('d-none');
             overlay.classList.remove('d-flex');

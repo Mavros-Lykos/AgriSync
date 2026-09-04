@@ -24,12 +24,16 @@ CREATE TABLE IF NOT EXISTS `users` (
   `nic_number` varchar(20) DEFAULT NULL,
   `business_reg_no` varchar(50) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `reset_token` varchar(64) DEFAULT NULL,
+  `reset_expires` datetime DEFAULT NULL,
+  `average_rating` decimal(3,2) NOT NULL DEFAULT 0.00,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email_unique` (`email`),
   KEY `role_index` (`role`),
-  KEY `district_index` (`district`)
+  KEY `district_index` (`district`),
+  KEY `reset_token_index` (`reset_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -64,14 +68,19 @@ CREATE TABLE IF NOT EXISTS `harvest_listings` (
   `crop_type` varchar(50) NOT NULL,
   `quantity_kg` decimal(10,2) NOT NULL,
   `min_order_quantity` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `quantity_reserved` decimal(10,2) NOT NULL DEFAULT 0.00,
   `price_per_kg` decimal(10,2) NOT NULL,
   `harvest_date` date NOT NULL,
+  `quality_grade` enum('A','B','C') NOT NULL DEFAULT 'B',
+  `certifications` varchar(255) DEFAULT NULL,
+  `image_path` varchar(255) DEFAULT NULL,
   `status` enum('available','matched','sold','expired') NOT NULL DEFAULT 'available',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `farmer_id_index` (`farmer_id`),
   KEY `crop_type_index` (`crop_type`),
+  KEY `quality_grade_index` (`quality_grade`),
   KEY `status_index` (`status`),
   CONSTRAINT `fk_harvest_farmer` FOREIGN KEY (`farmer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -87,7 +96,7 @@ CREATE TABLE IF NOT EXISTS `order_requests` (
   `max_price` decimal(10,2) NOT NULL,
   `delivery_date` date NOT NULL,
   `urgency` enum('low','medium','high') NOT NULL DEFAULT 'medium',
-  `status` enum('pending','matching','matched','fulfilled','cancelled') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','matching','matched','in_transit','delivered','fulfilled','cancelled') NOT NULL DEFAULT 'pending',
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -108,9 +117,10 @@ CREATE TABLE IF NOT EXISTS `order_matches` (
   `farmer_id` int(11) NOT NULL,
   `business_id` int(11) NOT NULL,
   `matched_price` decimal(10,2) NOT NULL,
+  `matched_quantity` decimal(10,2) NOT NULL DEFAULT 0.00,
   `agent_reasoning` text NOT NULL,
   `confidence_score` int(11) NOT NULL,
-  `status` enum('proposed','accepted','rejected','completed') NOT NULL DEFAULT 'proposed',
+  `status` enum('proposed','accepted','contract_signed','in_transit','delivered','completed','rejected','expired') NOT NULL DEFAULT 'proposed',
   `contract_agreed` tinyint(1) NOT NULL DEFAULT 0,
   `otp_verified` tinyint(1) NOT NULL DEFAULT 0,
   `otp_code` varchar(6) DEFAULT NULL,
@@ -194,6 +204,41 @@ CREATE TABLE IF NOT EXISTS `payments` (
   KEY `order_match_id_index` (`order_match_id`),
   KEY `status_index` (`status`),
   CONSTRAINT `fk_payment_match` FOREIGN KEY (`order_match_id`) REFERENCES `order_matches` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `user_reviews`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_reviews` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `reviewer_id` int(11) NOT NULL,
+  `reviewee_id` int(11) NOT NULL,
+  `order_match_id` int(11) NOT NULL,
+  `rating` tinyint(1) NOT NULL,
+  `comment` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_order_reviewer` (`order_match_id`,`reviewer_id`),
+  KEY `reviewer_id_index` (`reviewer_id`),
+  KEY `reviewee_id_index` (`reviewee_id`),
+  KEY `order_match_id_index` (`order_match_id`),
+  CONSTRAINT `fk_review_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_review_reviewee` FOREIGN KEY (`reviewee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_review_match` FOREIGN KEY (`order_match_id`) REFERENCES `order_matches` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `demand_cache`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `demand_cache` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `district` varchar(100) NOT NULL DEFAULT '',
+  `crop_type` varchar(100) NOT NULL,
+  `prediction_json` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `crop_district_created_idx` (`crop_type`, `district`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;
