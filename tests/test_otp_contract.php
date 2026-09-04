@@ -99,7 +99,7 @@ try {
         // Step 3.2: Verify state transition on valid OTP verification
         $stmt_upd = $db->prepare("
             UPDATE order_matches 
-            SET contract_agreed = 1, otp_verified = 1, status = 'accepted', updated_at = NOW() 
+            SET contract_agreed = 1, otp_verified = 1, status = 'contract_signed', updated_at = NOW() 
             WHERE id = ? AND otp_code = ?
         ");
         $stmt_upd->execute([$matchId, $generatedOtp]);
@@ -111,7 +111,7 @@ try {
 
         assertOtpTest((int)$verifiedMatch['contract_agreed'] === 1, "contract_agreed flag set to 1 in order_matches table");
         assertOtpTest((int)$verifiedMatch['otp_verified'] === 1, "otp_verified flag set to 1 in order_matches table");
-        assertOtpTest($verifiedMatch['status'] === 'accepted', "Match status updated to 'accepted' upon OTP verification");
+        assertOtpTest($verifiedMatch['status'] === 'contract_signed', "Match status updated to 'contract_signed' upon OTP verification");
     } else {
         echo "  [SKIP] No database match records available for live DB assertion.\n";
     }
@@ -119,10 +119,10 @@ try {
 } catch (Throwable $e) {
     echo "  [SKIP] Live MySQL DB connection not available in CLI env (" . $e->getMessage() . ")\n";
     // Simulated state transition assertion
-    $simulatedMatch = ['contract_agreed' => 1, 'otp_verified' => 1, 'status' => 'accepted'];
+    $simulatedMatch = ['contract_agreed' => 1, 'otp_verified' => 1, 'status' => 'contract_signed'];
     assertOtpTest($simulatedMatch['contract_agreed'] === 1, "Simulated contract_agreed set to 1");
     assertOtpTest($simulatedMatch['otp_verified'] === 1, "Simulated otp_verified set to 1");
-    assertOtpTest($simulatedMatch['status'] === 'accepted', "Simulated match status updated to 'accepted'");
+    assertOtpTest($simulatedMatch['status'] === 'contract_signed', "Simulated match status updated to 'contract_signed'");
 }
 
 echo "\n=======================================================\n";

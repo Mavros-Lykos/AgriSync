@@ -78,8 +78,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Check if email exists
             $check = $db->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
             $check->execute([':email' => $email_val]);
+            
+            // Check if NIC exists
+            $check_nic = false;
+            if (!empty($nic_val)) {
+                $stmt_nic = $db->prepare("SELECT id FROM users WHERE nic_number = :nic LIMIT 1");
+                $stmt_nic->execute([':nic' => $nic_val]);
+                $check_nic = $stmt_nic->fetch();
+            }
+            
+            // Check if BRN exists
+            $check_brn = false;
+            if (!empty($brn_val)) {
+                $stmt_brn = $db->prepare("SELECT id FROM users WHERE business_reg_no = :brn LIMIT 1");
+                $stmt_brn->execute([':brn' => $brn_val]);
+                $check_brn = $stmt_brn->fetch();
+            }
+
             if ($check->fetch()) {
                 $error = 'An account with this email address already exists.';
+            } elseif ($check_nic) {
+                $error = 'An account with this NIC number already exists.';
+            } elseif ($check_brn) {
+                $error = 'An account with this Business Registration Number already exists.';
             } else {
                 $db->beginTransaction();
 

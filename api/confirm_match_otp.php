@@ -170,12 +170,13 @@ if ($action === 'verify_otp') {
 
         $db->beginTransaction();
 
-        // 1. Update order_matches status to accepted, contract_agreed = 1, otp_verified = 1
+        // 1. Update order_matches status to contract_signed, contract_agreed = 1, otp_verified = 1, clear OTP code
         $stmt_upd_match = $db->prepare("
             UPDATE order_matches 
             SET contract_agreed = 1,
                 otp_verified = 1,
-                status = 'accepted',
+                otp_code = NULL,
+                status = 'contract_signed',
                 updated_at = NOW()
             WHERE id = :match_id
         ");
@@ -209,7 +210,7 @@ if ($action === 'verify_otp') {
             'success' => true,
             'data' => [
                 'match_id' => $match_id,
-                'status' => 'accepted',
+                'status' => 'contract_signed',
                 'contract_agreed' => 1,
                 'otp_verified' => 1,
                 'message' => 'Digital Purchase Order signed and contract verified successfully!'

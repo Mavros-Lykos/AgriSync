@@ -93,6 +93,16 @@ try {
         exit;
     }
 
+    if ($match['status'] !== 'contract_signed') {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Payment cannot be processed. Match contract has not been signed via OTP yet.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $db->beginTransaction();
 
     $payment_status = 'failed';

@@ -94,10 +94,11 @@ try {
         $orderId = $db->lastInsertId();
         $db->exec("INSERT INTO harvest_listings (farmer_id, crop_type, quantity_kg, price_per_kg, harvest_date, status) VALUES (1, 'Carrot', 500, 200, CURRENT_DATE, 'matched')");
         $listingId = $db->lastInsertId();
-        $db->exec("INSERT INTO order_matches (order_id, listing_id, farmer_id, business_id, matched_price, agent_reasoning, confidence_score, status) VALUES ({$orderId}, {$listingId}, 1, 5, 200, 'Test match', 95, 'proposed')");
+        $db->exec("INSERT INTO order_matches (order_id, listing_id, farmer_id, business_id, matched_price, agent_reasoning, confidence_score, status) VALUES ({$orderId}, {$listingId}, 1, 5, 200, 'Test match', 95, 'contract_signed')");
         $testMatchId = (int)$db->lastInsertId();
     } else {
         $testMatchId = (int)$match['id'];
+        $db->exec("UPDATE order_matches SET status = 'contract_signed' WHERE id = {$testMatchId}");
     }
 
     // Step 3.1: Insert pending payment
