@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS `order_matches` (
   `matched_price` decimal(10,2) NOT NULL,
   `agent_reasoning` text NOT NULL,
   `confidence_score` int(11) NOT NULL,
-  `status` enum('proposed','accepted','in_transit','delivered','completed','rejected') NOT NULL DEFAULT 'proposed',
+  `status` enum('proposed','accepted','in_transit','delivered','completed','rejected','expired') NOT NULL DEFAULT 'proposed',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
