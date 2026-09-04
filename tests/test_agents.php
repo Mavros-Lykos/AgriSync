@@ -39,6 +39,10 @@ class TestMockDb extends PDO {
     public function lastInsertId(?string $name = null): string|false {
         return '1';
     }
+    public function inTransaction(): bool { return false; }
+    public function beginTransaction(): bool { return true; }
+    public function commit(): bool { return true; }
+    public function rollBack(): bool { return true; }
 }
 
 class TestMockStatement extends PDOStatement {
@@ -199,6 +203,10 @@ class TestMOQMockDb extends PDO {
     public function lastInsertId(?string $name = null): string|false {
         return '1';
     }
+    public function inTransaction(): bool { return false; }
+    public function beginTransaction(): bool { return true; }
+    public function commit(): bool { return true; }
+    public function rollBack(): bool { return true; }
 }
 
 class TestMOQMockStatement extends PDOStatement {
