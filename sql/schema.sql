@@ -181,4 +181,17 @@ CREATE TABLE IF NOT EXISTS `user_reviews` (
   CONSTRAINT `fk_review_match` FOREIGN KEY (`order_match_id`) REFERENCES `order_matches` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+-- Table structure for table `demand_cache`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `demand_cache` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `district` varchar(100) NOT NULL DEFAULT '',
+  `crop_type` varchar(100) NOT NULL,
+  `prediction_json` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `crop_district_created_idx` (`crop_type`, `district`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 COMMIT;
