@@ -13,10 +13,14 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../agents/broker_agent.php';
 
-// Security: Enforce CLI execution only to prevent public HTTP DoS attacks
-if (php_sapi_name() !== 'cli') {
+// Security: Enforce CLI execution or internal HTTP token to prevent public DoS
+$is_cli = (php_sapi_name() === 'cli');
+$internal_token = $_GET['internal_token'] ?? '';
+$valid_token = defined('APP_NAME') ? md5(APP_NAME) : md5('AgriSync');
+
+if (!$is_cli && $internal_token !== $valid_token) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Unauthorized. This endpoint can only be executed via the command line interface.']);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized. This endpoint requires CLI or a valid internal token.']);
     exit;
 }
 

@@ -94,7 +94,8 @@ try {
 
     // 2. Trigger Async AI Broker Matchmaking (Non-blocking cURL call)
     $app_url = defined('APP_URL') && !empty(APP_URL) ? APP_URL : 'http://localhost:8000';
-    $async_url = rtrim($app_url, '/') . '/api/run_broker_async.php?order_id=' . $order_id;
+    $internal_token = defined('APP_NAME') ? md5(APP_NAME) : md5('AgriSync');
+    $async_url = rtrim($app_url, '/') . '/api/run_broker_async.php?order_id=' . $order_id . '&internal_token=' . $internal_token;
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $async_url);
