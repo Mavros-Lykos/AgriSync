@@ -54,6 +54,7 @@ $app_url = defined('APP_URL') ? APP_URL : '';
                 <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
                     <?php if (isLoggedIn()): ?>
                         <?php 
+                            $user_role = getUserRole();
                             $dash_url = ($user_role === 'farmer') ? '/farmer/dashboard.php' : (($user_role === 'business') ? '/business/dashboard.php' : '/admin/dashboard.php'); 
                         ?>
                         <a href="<?= $app_url . $dash_url ?>" class="btn btn-primary rounded-3 px-3">

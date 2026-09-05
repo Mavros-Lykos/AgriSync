@@ -37,7 +37,7 @@ function requireLogin(): void {
  * @param string|array $allowed_roles
  * @return void
  */
-function requireRole(string|array $allowed_roles): void {
+function requireRole($allowed_roles): void {
     requireLogin();
 
     $current_role = $_SESSION['user_role'] ?? '';

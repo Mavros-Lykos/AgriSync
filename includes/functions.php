@@ -53,7 +53,7 @@ function getUserRole(): ?string {
  * @param int $status_code
  * @return void
  */
-function jsonResponse(bool $success, mixed $data = [], ?string $error = null, int $status_code = 200): void {
+function jsonResponse(bool $success, $data = [], ?string $error = null, int $status_code = 200): void {
     if (!headers_sent()) {
         http_response_code($status_code);
         header('Content-Type: application/json; charset=utf-8');
