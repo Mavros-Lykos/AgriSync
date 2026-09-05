@@ -21,6 +21,15 @@ $csrf_token = generateCSRFToken();
 
 $matches = [];
 $error_msg = '';
+$success_msg = '';
+
+if (isset($_GET['status'])) {
+    if ($_GET['status'] === 'success') {
+        $success_msg = "Payment authorized successfully. Your funds are held securely in Escrow.";
+    } elseif ($_GET['status'] === 'cancel') {
+        $error_msg = "Payment authorization was cancelled.";
+    }
+}
 
 try {
     $db = getDbConnection();
@@ -85,8 +94,12 @@ require_once __DIR__ . '/../includes/navbar.php';
                 </div>
             </div>
 
+            <?php if (!empty($success_msg)): ?>
+                <div class="alert alert-success rounded-3"><i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($success_msg, ENT_QUOTES, 'UTF-8') ?></div>
+            <?php endif; ?>
+
             <?php if (!empty($error_msg)): ?>
-                <div class="alert alert-danger rounded-3"><?= htmlspecialchars($error_msg, ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="alert alert-danger rounded-3"><i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($error_msg, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
             <?php if (empty($matches)): ?>
@@ -397,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('match_id', activeMatchId);
             formData.append('csrf_token', csrfToken);
 
-            const res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+            const res = await fetch('../api/confirm_match_otp.php', {
                 method: 'POST',
                 body: formData
             });
@@ -443,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('contract_agreed', '1');
             formData.append('csrf_token', csrfToken);
 
-            const res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+            const res = await fetch('../api/confirm_match_otp.php', {
                 method: 'POST',
                 body: formData
             });
