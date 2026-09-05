@@ -47,12 +47,12 @@ ON DUPLICATE KEY UPDATE `updated_at` = NOW();
 -- --------------------------------------------------------
 -- 4. Seed Order Requests (Commercial Buyer Pre-Orders)
 -- --------------------------------------------------------
-INSERT INTO `order_requests` (`id`, `business_id`, `crop_type`, `quantity_kg`, `max_price`, `delivery_date`, `urgency`, `status`, `notes`, `created_at`, `updated_at`) VALUES
-(1, 5, 'Carrot', 1000.00, 230.00, DATE_ADD(CURRENT_DATE, INTERVAL 4 DAY), 'high', 'matching', 'Need fresh Nuwara Eliya carrots for retail store distribution.', NOW(), NOW()),
-(2, 5, 'Tomato', 800.00, 250.00, DATE_ADD(CURRENT_DATE, INTERVAL 3 DAY), 'medium', 'matched', 'Grade A tomatoes required for salad retail section.', NOW(), NOW()),
-(3, 6, 'Leek', 600.00, 200.00, DATE_ADD(CURRENT_DATE, INTERVAL 8 DAY), 'low', 'pending', 'Direct farm supply preferred for Colombo distribution centers.', NOW(), NOW()),
-(4, 6, 'Cabbage', 900.00, 175.00, CURRENT_DATE, 'high', 'fulfilled', 'Delivered to Gampaha centralized warehouse.', NOW(), NOW()),
-(5, 7, 'Red Onion', 2500.00, 310.00, DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), 'high', 'matching', 'Export grade cured red onions for Maldives sea container shipping.', NOW(), NOW())
+INSERT INTO `order_requests` (`id`, `business_id`, `crop_type`, `quantity_kg`, `max_price`, `min_delivery_qty`, `delivery_date`, `urgency`, `status`, `notes`, `created_at`, `updated_at`) VALUES
+(1, 5, 'Carrot', 1000.00, 230.00, 0.00, DATE_ADD(CURRENT_DATE, INTERVAL 4 DAY), 'high', 'matching', 'Need fresh Nuwara Eliya carrots for retail store distribution.', NOW(), NOW()),
+(2, 5, 'Tomato', 800.00, 250.00, 0.00, DATE_ADD(CURRENT_DATE, INTERVAL 3 DAY), 'medium', 'matched', 'Grade A tomatoes required for salad retail section.', NOW(), NOW()),
+(3, 6, 'Leek', 600.00, 200.00, 0.00, DATE_ADD(CURRENT_DATE, INTERVAL 8 DAY), 'low', 'pending', 'Direct farm supply preferred for Colombo distribution centers.', NOW(), NOW()),
+(4, 6, 'Cabbage', 900.00, 175.00, 0.00, CURRENT_DATE, 'high', 'fulfilled', 'Delivered to Gampaha centralized warehouse.', NOW(), NOW()),
+(5, 7, 'Red Onion', 2500.00, 310.00, 0.00, DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), 'high', 'matching', 'Export grade cured red onions for Maldives sea container shipping.', NOW(), NOW())
 ON DUPLICATE KEY UPDATE `updated_at` = NOW();
 
 -- --------------------------------------------------------
