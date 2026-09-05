@@ -75,6 +75,30 @@ class BrokerAgent {
             ], $this->db);
 
             if (empty($candidates)) {
+                // Feature: Price Feedback / Relaxed Search
+                $relaxedCandidates = $this->searchCandidateListings($order['crop_type'], 999999.0, (float) $order['quantity_kg']);
+                
+                if (!empty($relaxedCandidates)) {
+                    $lowestPrice = min(array_column($relaxedCandidates, 'price_per_kg'));
+                    $msg = "There are farmers with {$order['crop_type']} available, but their minimum asking price is Rs. {$lowestPrice}/kg. Your budget is Rs. {$order['max_price']}/kg. Consider increasing your budget.";
+                    
+                    $this->updateOrderStatus($orderId, 'pending');
+                    AgentLogger::log('broker', '2b. Price Constraint Mismatch', $orderId, [
+                        'message' => 'Active harvest listings found, but all exceed maximum budget.',
+                        'lowest_available_price' => $lowestPrice
+                    ], $this->db);
+                    
+                    $this->createNotification((int)$order['business_id'], "AI Broker: {$order['crop_type']} is available starting at Rs. {$lowestPrice}/kg. Increase your budget (currently Rs. {$order['max_price']}) to secure a match.", "/business/orders.php");
+
+                    return [
+                        'success' => true,
+                        'matched' => false,
+                        'order_id' => $orderId,
+                        'message' => $msg,
+                        'match' => null
+                    ];
+                }
+
                 $this->updateOrderStatus($orderId, 'pending');
                 AgentLogger::log('broker', '2b. No Matching Listings Available', $orderId, [
                     'message' => 'No active harvest listings found matching crop criteria'

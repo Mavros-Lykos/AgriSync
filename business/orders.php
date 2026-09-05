@@ -27,7 +27,8 @@ try {
             o.id, o.crop_type, o.quantity_kg, o.max_price, o.delivery_date, o.urgency, o.status, o.notes, o.created_at,
             m.id as match_id, m.matched_price, m.confidence_score, m.status as match_status,
             u.id as farmer_id, u.name as farmer_name, u.district as farmer_district, u.average_rating as farmer_rating,
-            r.id as review_id, r.rating as review_rating, r.comment as review_comment
+            r.id as review_id, r.rating as review_rating, r.comment as review_comment,
+            (SELECT context_json FROM agent_logs al WHERE al.order_id = o.id AND al.action = '2b. Price Constraint Mismatch' ORDER BY al.id DESC LIMIT 1) as price_feedback_json
         FROM order_requests o
         LEFT JOIN order_matches m ON o.id = m.order_id
         LEFT JOIN users u ON m.farmer_id = u.id
@@ -198,6 +199,27 @@ require_once __DIR__ . '/../includes/navbar.php';
                                                             <i class="bi bi-star-fill me-1"></i> Leave Review
                                                         </button>
                                                     <?php endif; ?>
+                                                <?php elseif ($st === 'pending'): ?>
+                                                    <?php 
+                                                    $hasFeedback = false;
+                                                    $suggestedPrice = 0;
+                                                    if (!empty($o['price_feedback_json'])) {
+                                                        $feedbackData = json_decode($o['price_feedback_json'], true);
+                                                        if (isset($feedbackData['lowest_available_price'])) {
+                                                            $hasFeedback = true;
+                                                            $suggestedPrice = (float) $feedbackData['lowest_available_price'];
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <?php if ($hasFeedback): ?>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1 fw-semibold" onclick="openBudgetModal(<?= (int)$o['id'] ?>, <?= $suggestedPrice ?>, <?= (float)$o['max_price'] ?>)">
+                                                            <i class="bi bi-graph-up-arrow me-1"></i> Increase Budget
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1 btn-retry-ai" data-order-id="<?= (int)$o['id'] ?>">
+                                                            <i class="bi bi-arrow-clockwise me-1"></i> Retry AI Match
+                                                        </button>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     <span class="badge bg-light text-muted border">In Queue</span>
                                                 <?php endif; ?>
@@ -258,6 +280,45 @@ require_once __DIR__ . '/../includes/navbar.php';
                         <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" id="submitReviewBtn" class="btn btn-primary rounded-3 px-4 py-2 fw-semibold" style="min-height: 44px; border-radius: 8px;">
                             <i class="bi bi-send me-1"></i> Submit Review
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Increase Budget Modal -->
+<div class="modal fade" id="budgetModal" tabindex="-1" aria-labelledby="budgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="budgetModalLabel">
+                    <i class="bi bi-graph-up-arrow text-danger me-2"></i> Update Order Budget
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning rounded-3 py-2 px-3 small mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i> AI Broker has found available stock, but the minimum asking price is <strong>Rs. <span id="budgetSuggestedLabel">0</span>/kg</strong>.
+                </div>
+
+                <div id="budgetModalAlert" class="alert d-none rounded-3 py-2 px-3 small mb-3"></div>
+
+                <form id="budgetForm" novalidate>
+                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                    <input type="hidden" name="order_id" id="budgetOrderId" value="">
+
+                    <div class="mb-4">
+                        <label for="budgetNewPrice" class="form-label small fw-semibold text-muted">New Max Price per kg (Rs.)</label>
+                        <input type="number" step="1.00" name="new_price" id="budgetNewPrice" class="form-control rounded-3 fw-bold fs-5 text-success" required>
+                        <div class="form-text">Your previous budget was Rs. <span id="budgetOldLabel">0</span>/kg.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" id="submitBudgetBtn" class="btn btn-primary rounded-3 px-4 py-2 fw-semibold" style="min-height: 44px; border-radius: 8px;">
+                            <i class="bi bi-check2-circle me-1"></i> Save & Run AI Match
                         </button>
                     </div>
                 </form>
@@ -400,6 +461,98 @@ document.getElementById('reviewForm').addEventListener('submit', async function(
         alertBox.classList.remove('d-none');
     }
 });
+
+// --- Retry AI Match ---
+document.querySelectorAll('.btn-retry-ai').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const orderId = this.getAttribute('data-order-id');
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Matching...';
+        
+        try {
+            const res = await fetch('../api/retry_broker.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: parseInt(orderId) })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                alert('Error: ' + data.error);
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Retry AI Match';
+            }
+        } catch (err) {
+            console.error(err);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Retry AI Match';
+        }
+    });
+});
+
+// --- Budget Modal Logic ---
+let budgetModalObj = null;
+
+function openBudgetModal(orderId, suggestedPrice, oldPrice) {
+    document.getElementById('budgetOrderId').value = orderId;
+    document.getElementById('budgetSuggestedLabel').textContent = suggestedPrice.toFixed(2);
+    document.getElementById('budgetOldLabel').textContent = oldPrice.toFixed(2);
+    document.getElementById('budgetNewPrice').value = suggestedPrice.toFixed(2);
+    document.getElementById('budgetModalAlert').classList.add('d-none');
+
+    if (!budgetModalObj) {
+        budgetModalObj = new bootstrap.Modal(document.getElementById('budgetModal'));
+    }
+    budgetModalObj.show();
+}
+
+document.getElementById('budgetForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const alertBox = document.getElementById('budgetModalAlert');
+    const submitBtn = document.getElementById('submitBudgetBtn');
+
+    alertBox.classList.add('d-none');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
+
+    const payload = {
+        order_id: parseInt(form.order_id.value),
+        new_price: parseFloat(form.new_price.value),
+        csrf_token: form.csrf_token.value
+    };
+
+    try {
+        const res = await fetch('../api/update_order_price.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+            alertBox.className = 'alert alert-success rounded-3 py-2 px-3 small mb-3';
+            alertBox.textContent = data.data.message || 'Budget updated! AI matching initiated.';
+            alertBox.classList.remove('d-none');
+            setTimeout(() => { window.location.reload(); }, 1200);
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Save & Run AI Match';
+            alertBox.className = 'alert alert-danger rounded-3 py-2 px-3 small mb-3';
+            alertBox.textContent = data.error || 'Failed to update budget.';
+            alertBox.classList.remove('d-none');
+        }
+    } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Save & Run AI Match';
+        alertBox.className = 'alert alert-danger rounded-3 py-2 px-3 small mb-3';
+        alertBox.textContent = 'Network error: ' + err.message;
+        alertBox.classList.remove('d-none');
+    }
+});
+
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
