@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         try {
-            const res = await fetch('<?= APP_URL ?>/api/farmer.php?action=get_dashboard');
+            const res = await fetch('../api/farmer.php?action=get_dashboard');
             const data = await res.json();
 
             if (data.success) {
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
 
                 try {
-                    const res = await fetch('<?= APP_URL ?>/api/update_delivery_status.php', {
+                    const res = await fetch('../api/update_delivery_status.php', {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',
@@ -414,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('match_id', currentActionMatchId);
                 formData.append('csrf_token', csrfToken);
 
-                const res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+                const res = await fetch('../api/confirm_match_otp.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('contract_agreed', '1');
                 formData.append('csrf_token', csrfToken);
 
-                res = await fetch('<?= APP_URL ?>/api/confirm_match_otp.php', {
+                res = await fetch('../api/confirm_match_otp.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('decision', currentActionType);
                 formData.append('csrf_token', csrfToken);
 
-                res = await fetch('<?= APP_URL ?>/api/farmer.php?action=match_decision', {
+                res = await fetch('../api/farmer.php?action=match_decision', {
                     method: 'POST',
                     body: formData,
                     headers: { 'X-CSRF-TOKEN': csrfToken }
