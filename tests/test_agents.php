@@ -173,7 +173,7 @@ echo "\n3. Testing AI Broker Agent Multi-Step Matching (TASK-055)...\n";
 if ($testDb instanceof PDO && !($testDb instanceof TestMockDb)) {
     // Reset test order to pending to ensure test idempotency across multiple runs
     $testDb->exec("UPDATE order_requests SET status = 'pending' WHERE id = 1");
-    $testDb->exec("UPDATE harvest_listings SET status = 'available' WHERE id = 1");
+    $testDb->exec("UPDATE harvest_listings SET status = 'available', quantity_reserved = 0 WHERE id = 1");
     $testDb->exec("DELETE FROM order_matches WHERE order_id = 1");
 }
 

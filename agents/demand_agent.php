@@ -163,6 +163,9 @@ class DemandAgent {
             if ($row && !empty($row['prediction_json'])) {
                 $decoded = json_decode($row['prediction_json'], true);
                 if (is_array($decoded)) {
+                    if (isset($decoded['forecast']) && is_array($decoded['forecast'])) {
+                        return $decoded['forecast'];
+                    }
                     return $decoded;
                 }
             }
