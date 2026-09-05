@@ -23,7 +23,7 @@ try {
     $db = getDbConnection();
 
     // Fetch farmer profile district if available
-    $pStmt = $db->prepare("SELECT district FROM farmers WHERE user_id = :user_id LIMIT 1");
+    $pStmt = $db->prepare("SELECT district FROM users WHERE id = :user_id LIMIT 1");
     $pStmt->execute([':user_id' => $user_id]);
     $farmerProfile = $pStmt->fetch(PDO::FETCH_ASSOC);
     if ($farmerProfile && !empty($farmerProfile['district'])) {

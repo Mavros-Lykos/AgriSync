@@ -31,10 +31,10 @@ try {
         FROM order_requests o
         LEFT JOIN order_matches m ON o.id = m.order_id
         LEFT JOIN users u ON m.farmer_id = u.id
-        LEFT JOIN user_reviews r ON m.id = r.order_match_id AND r.reviewer_id = :business_id
+        LEFT JOIN user_reviews r ON m.id = r.order_match_id AND r.reviewer_id = :reviewer_id
         WHERE o.business_id = :business_id
     ";
-    $params = [':business_id' => $user_id];
+    $params = [':business_id' => $user_id, ':reviewer_id' => $user_id];
 
     if ($status_filter !== 'all' && in_array($status_filter, ['pending', 'matching', 'matched', 'in_transit', 'fulfilled', 'cancelled'])) {
         $sql .= " AND o.status = :status";
