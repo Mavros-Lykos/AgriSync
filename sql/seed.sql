@@ -99,5 +99,20 @@ INSERT INTO `payments` (`id`, `order_match_id`, `payhere_payment_id`, `amount`, 
 (2, 2, '320025810013', 144000.00, 'escrow_released', NOW(), NOW())
 ON DUPLICATE KEY UPDATE `updated_at` = NOW();
 
-COMMIT;
+-- --------------------------------------------------------
+-- 10. Seed User Reviews (Reputation System)
+-- --------------------------------------------------------
+INSERT INTO `user_reviews` (`id`, `reviewer_id`, `reviewee_id`, `order_match_id`, `rating`, `comment`, `created_at`, `updated_at`) VALUES
+(1, 6, 1, 2, 5, 'Bandara provided exceptional quality cabbage. Delivered exactly on time, and the quality grade was better than expected.', NOW(), NOW()),
+(2, 5, 2, 1, 4, 'Good quality tomatoes, though a small percentage were slightly overripe. Fast communication.', NOW(), NOW())
+ON DUPLICATE KEY UPDATE `updated_at` = NOW();
 
+-- --------------------------------------------------------
+-- 11. Seed Demand Cache (AI Predictions)
+-- --------------------------------------------------------
+INSERT INTO `demand_cache` (`id`, `district`, `crop_type`, `prediction_json`, `created_at`) VALUES
+(1, 'Nuwara Eliya', 'Carrot', '{"success":true,"forecast":{"predicted_demand_level":"High","confidence_score":92,"actionable_advice":"Strong demand predicted. Pre-list harvests 5 days early.","key_factors":["Holiday season approaching","Recent flood in competing districts"]}}', NOW()),
+(2, 'Dambulla', 'Tomato', '{"success":true,"forecast":{"predicted_demand_level":"Medium","confidence_score":85,"actionable_advice":"Steady demand. Current spot prices are optimal.","key_factors":["Stable market supply","Average logistics availability"]}}', NOW())
+ON DUPLICATE KEY UPDATE `created_at` = NOW();
+
+COMMIT;
