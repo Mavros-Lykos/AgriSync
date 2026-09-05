@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS `order_requests` (
   `crop_type` varchar(50) NOT NULL,
   `quantity_kg` decimal(10,2) NOT NULL,
   `max_price` decimal(10,2) NOT NULL,
+  `min_delivery_qty` decimal(10,2) NOT NULL DEFAULT 0.00,
   `delivery_date` date NOT NULL,
   `urgency` enum('low','medium','high') NOT NULL DEFAULT 'medium',
   `status` enum('pending','matching','matched','in_transit','delivered','fulfilled','cancelled') NOT NULL DEFAULT 'pending',

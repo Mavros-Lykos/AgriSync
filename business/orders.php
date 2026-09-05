@@ -131,8 +131,19 @@ require_once __DIR__ . '/../includes/navbar.php';
                                     </td>
                                 </tr>
                             <?php else: ?>
+                                <?php 
+                                    $row_counts = [];
+                                    foreach ($orders as $o) {
+                                        $row_counts[$o['id']] = ($row_counts[$o['id']] ?? 0) + 1;
+                                    }
+                                    $last_order_id = null;
+                                ?>
                                 <?php foreach ($orders as $o): ?>
                                     <?php
+                                        $is_new_order = ($o['id'] !== $last_order_id);
+                                        $last_order_id = $o['id'];
+                                        $rowspan = $row_counts[$o['id']];
+                                        
                                         $st = $o['status'];
                                         $badge = 'bg-secondary-subtle text-secondary';
                                         if ($st === 'matching') $badge = 'bg-warning-subtle text-warning';
@@ -142,14 +153,16 @@ require_once __DIR__ . '/../includes/navbar.php';
                                         if ($st === 'cancelled') $badge = 'bg-danger-subtle text-danger';
                                     ?>
                                     <tr>
-                                        <td class="fw-semibold text-muted">#ORD-<?= (int)$o['id'] ?></td>
-                                        <td>
-                                            <span class="fw-bold text-dark"><?= htmlspecialchars($o['crop_type'], ENT_QUOTES, 'UTF-8') ?></span>
-                                            <?php if (!empty($o['notes'])): ?>
-                                                <small class="text-muted d-block" style="font-size: 0.75rem;"><?= htmlspecialchars($o['notes'], ENT_QUOTES, 'UTF-8') ?></small>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><strong><?= number_format($o['quantity_kg'], 1) ?></strong> kg</td>
+                                        <?php if ($is_new_order): ?>
+                                            <td class="fw-semibold text-muted" rowspan="<?= $rowspan ?>">#ORD-<?= (int)$o['id'] ?></td>
+                                            <td rowspan="<?= $rowspan ?>">
+                                                <span class="fw-bold text-dark"><?= htmlspecialchars($o['crop_type'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php if (!empty($o['notes'])): ?>
+                                                    <small class="text-muted d-block" style="font-size: 0.75rem;"><?= htmlspecialchars($o['notes'], ENT_QUOTES, 'UTF-8') ?></small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td rowspan="<?= $rowspan ?>"><strong><?= number_format($o['quantity_kg'], 1) ?></strong> kg</td>
+                                        <?php endif; ?>
                                         <td>
                                             <?php if (!empty($o['matched_price'])): ?>
                                                 <span class="text-success fw-bold">Rs. <?= number_format($o['matched_price'], 2) ?></span>
@@ -158,9 +171,11 @@ require_once __DIR__ . '/../includes/navbar.php';
                                                 <span>Rs. <?= number_format($o['max_price'], 2) ?> cap</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="small text-muted">
-                                            <i class="bi bi-calendar3 me-1"></i> <?= htmlspecialchars($o['delivery_date'], ENT_QUOTES, 'UTF-8') ?>
-                                        </td>
+                                        <?php if ($is_new_order): ?>
+                                            <td class="small text-muted" rowspan="<?= $rowspan ?>">
+                                                <i class="bi bi-calendar3 me-1"></i> <?= htmlspecialchars($o['delivery_date'], ENT_QUOTES, 'UTF-8') ?>
+                                            </td>
+                                        <?php endif; ?>
                                         <td>
                                             <span class="badge rounded-pill <?= $badge ?> px-2 py-1 text-capitalize">
                                                 <?= htmlspecialchars(str_replace('_', ' ', $st), ENT_QUOTES, 'UTF-8') ?>
@@ -220,6 +235,11 @@ require_once __DIR__ . '/../includes/navbar.php';
                                                             <i class="bi bi-arrow-clockwise me-1"></i> Retry AI Match
                                                         </button>
                                                     <?php endif; ?>
+                                                    
+                                                    <!-- Cancel button for pending orders -->
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1 ms-1 btn-cancel-order" data-order-id="<?= (int)$o['id'] ?>">
+                                                        <i class="bi bi-x-circle me-1"></i> Cancel
+                                                    </button>
                                                 <?php else: ?>
                                                     <span class="badge bg-light text-muted border">In Queue</span>
                                                 <?php endif; ?>
@@ -487,6 +507,43 @@ document.querySelectorAll('.btn-retry-ai').forEach(btn => {
             console.error(err);
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Retry AI Match';
+        }
+    });
+});
+
+// --- Cancel Order ---
+document.querySelectorAll('.btn-cancel-order').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to cancel this pending order?')) return;
+        
+        const orderId = this.getAttribute('data-order-id');
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Cancelling...';
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'update_status');
+            formData.append('order_id', orderId);
+            formData.append('status', 'cancelled');
+            formData.append('type', 'request');
+            
+            // Assuming api/orders.php handles general order actions
+            const res = await fetch('../api/orders.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-x-circle me-1"></i> Cancel';
+            }
+        } catch (err) {
+            console.error(err);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-x-circle me-1"></i> Cancel';
         }
     });
 });

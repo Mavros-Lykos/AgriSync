@@ -40,6 +40,7 @@ $max_price = (float) ($input['max_price'] ?? 0);
 $delivery_date = sanitize($input['delivery_date'] ?? '');
 $urgency = sanitize($input['urgency'] ?? 'medium');
 $notes = sanitize($input['notes'] ?? '');
+$min_delivery_qty = (float) ($input['min_delivery_qty'] ?? 0);
 
 // Validation
 if (empty($crop_type) || !in_array($crop_type, AGRISYNC_CROPS, true)) {
@@ -76,15 +77,16 @@ try {
     // 1. Insert Order Request
     $stmt = $db->prepare("
         INSERT INTO order_requests 
-            (business_id, crop_type, quantity_kg, max_price, delivery_date, urgency, status, notes, created_at, updated_at)
+            (business_id, crop_type, quantity_kg, max_price, min_delivery_qty, delivery_date, urgency, status, notes, created_at, updated_at)
         VALUES 
-            (:business_id, :crop_type, :quantity_kg, :max_price, :delivery_date, :urgency, 'pending', :notes, NOW(), NOW())
+            (:business_id, :crop_type, :quantity_kg, :max_price, :min_delivery_qty, :delivery_date, :urgency, 'pending', :notes, NOW(), NOW())
     ");
     $stmt->execute([
         ':business_id' => $user_id,
         ':crop_type' => $crop_type,
         ':quantity_kg' => $quantity_kg,
         ':max_price' => $max_price,
+        ':min_delivery_qty' => $min_delivery_qty,
         ':delivery_date' => $delivery_date,
         ':urgency' => $urgency,
         ':notes' => $notes

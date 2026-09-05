@@ -66,7 +66,8 @@ class BrokerAgent {
             // =========================================================================
             // STEP 2: Query Candidate Harvest Listings (Available Unreserved Stock > 0)
             // =========================================================================
-            $candidates = $this->searchCandidateListings($order['crop_type'], (float) $order['max_price'], (float) $order['quantity_kg']);
+            $minDeliveryQty = isset($order['min_delivery_qty']) ? (float)$order['min_delivery_qty'] : 0.0;
+            $candidates = $this->searchCandidateListings($order['crop_type'], (float) $order['max_price'], (float) $order['quantity_kg'], $minDeliveryQty);
 
             AgentLogger::log('broker', '2. Database Candidate Search', $orderId, [
                 'crop_queried' => $order['crop_type'],
@@ -76,7 +77,7 @@ class BrokerAgent {
 
             if (empty($candidates)) {
                 // Feature: Price Feedback / Relaxed Search
-                $relaxedCandidates = $this->searchCandidateListings($order['crop_type'], 999999.0, (float) $order['quantity_kg']);
+                $relaxedCandidates = $this->searchCandidateListings($order['crop_type'], 999999.0, (float) $order['quantity_kg'], $minDeliveryQty);
                 
                 if (!empty($relaxedCandidates)) {
                     $lowestPrice = min(array_column($relaxedCandidates, 'price_per_kg'));
@@ -344,7 +345,7 @@ class BrokerAgent {
     /**
      * Search available harvest listings with unreserved stock > 0
      */
-    private function searchCandidateListings(string $cropType, float $maxPrice, float $orderQuantity = 0.0): array {
+    private function searchCandidateListings(string $cropType, float $maxPrice, float $orderQuantity = 0.0, float $minDeliveryQty = 0.0): array {
         $stmt = $this->db->prepare("
             SELECT h.*, 
                    (h.quantity_kg - COALESCE(h.quantity_reserved, 0.00)) AS available_kg,
@@ -353,6 +354,7 @@ class BrokerAgent {
             JOIN users u ON h.farmer_id = u.id
             WHERE (h.status = 'available' OR h.status = 'matched')
               AND (h.quantity_kg - COALESCE(h.quantity_reserved, 0.00)) > 0
+              AND (h.quantity_kg - COALESCE(h.quantity_reserved, 0.00)) >= :min_delivery_qty
               AND h.harvest_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
               AND LOWER(h.crop_type) = LOWER(:crop_type)
               AND h.price_per_kg <= :max_price
@@ -363,7 +365,8 @@ class BrokerAgent {
         $stmt->execute([
             ':crop_type' => trim($cropType),
             ':max_price' => $maxPrice,
-            ':order_quantity' => $orderQuantity
+            ':order_quantity' => $orderQuantity,
+            ':min_delivery_qty' => $minDeliveryQty
         ]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

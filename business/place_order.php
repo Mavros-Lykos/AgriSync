@@ -95,7 +95,16 @@ require_once __DIR__ . '/../includes/navbar.php';
                                 <span class="input-group-text bg-light rounded-start-3">Rs.</span>
                                 <input type="number" step="5" min="10" name="max_price" id="priceInput" class="form-control rounded-end-3" placeholder="e.g. 220" value="<?= $prefill_max_price ?>" required>
                             </div>
-                            <small class="text-muted d-block mt-1">Our AI broker ensures you never pay above this ceiling.</small>
+                            <small id="priceGuidance" class="text-muted d-block mt-1">Our AI broker ensures you never pay above this ceiling.</small>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="minDeliveryQty" class="form-label small fw-semibold text-muted">Minimum Match Quantity per Farmer (kg)</label>
+                            <div class="input-group">
+                                <input type="number" step="1" min="0" name="min_delivery_qty" id="minDeliveryQty" class="form-control rounded-start-3" placeholder="e.g. 50 (Optional)" value="0">
+                                <span class="input-group-text bg-light rounded-end-3">kg</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Avoid too many small partial fulfillments.</small>
                         </div>
 
                         <div class="col-12 col-md-6">
@@ -158,6 +167,28 @@ require_once __DIR__ . '/../includes/navbar.php';
 </div>
 
 <script>
+document.getElementById('cropSelect').addEventListener('change', async function() {
+    const crop = this.value;
+    const priceHint = document.getElementById('priceGuidance');
+    
+    if (!crop) return;
+    
+    priceHint.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span> Fetching market data...';
+    
+    try {
+        const res = await fetch(`../api/get_market_price.php?crop=${encodeURIComponent(crop)}`);
+        const data = await res.json();
+        
+        if (data.success && data.data.has_data) {
+            priceHint.innerHTML = `<i class="bi bi-info-circle-fill text-primary"></i> Current market avg: <strong>Rs. ${data.data.avg_price}/kg</strong>. Lowest: <strong>Rs. ${data.data.lowest_price}/kg</strong>.`;
+        } else {
+            priceHint.innerHTML = '<i class="bi bi-info-circle text-muted"></i> No active market listings for this crop yet.';
+        }
+    } catch (e) {
+        priceHint.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i> Could not fetch market data.';
+    }
+});
+
 document.getElementById('orderForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -174,6 +205,7 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         crop_type: form.crop_type.value,
         quantity_kg: parseFloat(form.quantity_kg.value),
         max_price: parseFloat(form.max_price.value),
+        min_delivery_qty: parseFloat(form.min_delivery_qty.value) || 0,
         delivery_date: form.delivery_date.value,
         urgency: form.urgency.value,
         notes: form.notes.value,
