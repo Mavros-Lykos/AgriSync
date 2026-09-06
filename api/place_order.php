@@ -28,10 +28,24 @@ if ($user_role !== 'business' && $user_role !== 'admin') {
     exit;
 }
 
+// CSRF Validation
+$csrf = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+if (!empty($csrf) && !validateCSRFToken($csrf)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'CSRF token validation failed.']);
+    exit;
+}
+
 // Ingest JSON or POST input
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
     $input = $_POST;
+}
+$csrf_body = $input['csrf_token'] ?? '';
+if (!empty($csrf_body) && empty($csrf) && !validateCSRFToken($csrf_body)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'CSRF token validation failed.']);
+    exit;
 }
 
 $crop_type = sanitize($input['crop_type'] ?? '');

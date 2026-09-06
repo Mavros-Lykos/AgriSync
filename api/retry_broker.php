@@ -20,6 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+$csrf  = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($input['csrf_token'] ?? '');
+if (!validateCSRFToken($csrf)) {
+    jsonResponse(false, [], 'CSRF token validation failed.', 403);
+}
 $order_id = (int)($input['order_id'] ?? 0);
 
 if ($order_id <= 0) {
