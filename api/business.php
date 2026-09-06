@@ -83,69 +83,6 @@ if ($action === 'get_dashboard') {
         jsonResponse(false, [], 'Failed to fetch pre-order requests.', 500);
     }
 
-} elseif ($action === 'create_request') {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        jsonResponse(false, [], 'Method not allowed.', 405);
-    }
-
-    $crop_type     = sanitize($_POST['crop_type'] ?? '');
-    $quantity_kg   = (float)($_POST['quantity_kg'] ?? 0);
-    $max_price     = (float)($_POST['max_price'] ?? 0);
-    $delivery_date = sanitize($_POST['delivery_date'] ?? '');
-    $urgency       = sanitize($_POST['urgency'] ?? 'medium');
-    $notes         = sanitize($_POST['notes'] ?? '');
-
-    if (empty($crop_type) || $quantity_kg <= 0 || $max_price <= 0 || empty($delivery_date)) {
-        jsonResponse(false, [], 'Please enter a valid crop type, required yield (>0), max budget price (>0), and target delivery date.', 400);
-    }
-
-    try {
-        $db->beginTransaction();
-
-        $stmt = $db->prepare("INSERT INTO order_requests (business_id, crop_type, quantity_kg, max_price, delivery_date, urgency, status, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'matching', ?, NOW(), NOW())");
-        $stmt->execute([$business_id, $crop_type, $quantity_kg, $max_price, $delivery_date, $urgency, $notes]);
-        $order_id = (int)$db->lastInsertId();
-
-        // Check if matching farmer listing exists
-        $match_stmt = $db->prepare("
-            SELECT id, farmer_id, price_per_kg, quantity_kg 
-            FROM harvest_listings 
-            WHERE crop_type = ? AND status = ? AND price_per_kg <= ? 
-            ORDER BY price_per_kg ASC 
-            LIMIT 1
-        ");
-        $match_stmt->execute([$crop_type, 'available', $max_price]);
-        $best_listing = $match_stmt->fetch();
-
-        if ($best_listing) {
-            $farmer_id = (int)$best_listing['farmer_id'];
-            $listing_id = (int)$best_listing['id'];
-            $matched_price = (float)$best_listing['price_per_kg'];
-            $confidence = 94; // AI match confidence rating
-            $reasoning = "AI Broker matched buyer order #{$order_id} with farmer #{$farmer_id} harvest listing #{$listing_id}. Agreed price: Rs. {$matched_price}/kg based on proximity and fair-trade guardrails.";
-
-            $insert_match = $db->prepare("INSERT INTO order_matches (order_id, listing_id, farmer_id, business_id, matched_price, agent_reasoning, confidence_score, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'proposed', NOW(), NOW())");
-            $insert_match->execute([$order_id, $listing_id, $farmer_id, $business_id, $matched_price, $reasoning, $confidence]);
-
-            // Notify Farmer
-            $notif_stmt = $db->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at, updated_at) VALUES (?, ?, ?, 0, NOW(), NOW())");
-            $notif_message = "New buyer order match proposed for your {$crop_type} harvest!";
-            $notif_stmt->execute([$farmer_id, $notif_message, '/farmer/orders.php']);
-
-            // Log agent action
-            $log_stmt = $db->prepare("INSERT INTO agent_logs (agent_type, order_id, action_step, log_data, created_at, updated_at) VALUES ('broker', ?, 'Matched buyer order with farmer harvest yield', ?, NOW(), NOW())");
-            $log_stmt->execute([$order_id, json_encode(['listing_id' => $listing_id, 'price' => $matched_price])]);
-        }
-
-        $db->commit();
-        jsonResponse(true, ['order_id' => $order_id, 'auto_matched' => !empty($best_listing)], 'Pre-order request submitted and automated matching engine executed!');
-    } catch (PDOException $e) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
-        jsonResponse(false, [], 'Failed to create pre-order request.', 500);
-    }
-
 } elseif ($action === 'complete_order') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         jsonResponse(false, [], 'Method not allowed.', 405);
