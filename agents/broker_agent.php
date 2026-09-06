@@ -358,7 +358,7 @@ class BrokerAgent {
               AND h.harvest_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
               AND LOWER(h.crop_type) = LOWER(:crop_type)
               AND h.price_per_kg <= :max_price
-              AND h.min_order_quantity <= :order_quantity
+              AND LEAST(h.min_order_quantity, (h.quantity_kg - COALESCE(h.quantity_reserved, 0.00))) <= :order_quantity
             ORDER BY h.price_per_kg ASC, h.harvest_date ASC
             LIMIT 15
         ");
