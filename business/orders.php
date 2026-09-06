@@ -28,7 +28,7 @@ try {
             m.id as match_id, m.matched_price, m.confidence_score, m.status as match_status,
             u.id as farmer_id, u.name as farmer_name, u.district as farmer_district, u.average_rating as farmer_rating,
             r.id as review_id, r.rating as review_rating, r.comment as review_comment,
-            (SELECT context_json FROM agent_logs al WHERE al.order_id = o.id AND al.action = '2b. Price Constraint Mismatch' ORDER BY al.id DESC LIMIT 1) as price_feedback_json
+            (SELECT log_data FROM agent_logs al WHERE al.order_id = o.id AND al.action_step LIKE '%Price Constraint Mismatch%' ORDER BY al.id DESC LIMIT 1) as price_feedback_json
         FROM order_requests o
         LEFT JOIN order_matches m ON o.id = m.order_id
         LEFT JOIN users u ON m.farmer_id = u.id
