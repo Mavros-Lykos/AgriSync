@@ -492,7 +492,10 @@ document.querySelectorAll('.btn-retry-ai').forEach(btn => {
         try {
             const res = await fetch('../api/retry_broker.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '<?= generateCSRFToken() ?>'
+                },
                 body: JSON.stringify({ order_id: parseInt(orderId) })
             });
             const data = await res.json();
@@ -526,6 +529,7 @@ document.querySelectorAll('.btn-cancel-order').forEach(btn => {
             formData.append('order_id', orderId);
             formData.append('status', 'cancelled');
             formData.append('type', 'request');
+            formData.append('csrf_token', '<?= generateCSRFToken() ?>');
             
             // Assuming api/orders.php handles general order actions
             const res = await fetch('../api/orders.php', {
