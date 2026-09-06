@@ -271,6 +271,21 @@ require_once __DIR__ . '/../includes/navbar.php';
                                         </button>
                                     </form>
 
+                                    <!-- ⚠️ DEV ONLY: Test Buy Button (bypasses PayHere) -->
+                                    <?php if (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'])): ?>
+                                    <hr class="my-3">
+                                    <div class="p-3 rounded-3 border border-warning bg-warning-subtle mb-2">
+                                        <p class="small fw-bold text-warning-emphasis mb-2">
+                                            <i class="bi bi-cone-striped me-1"></i> DEV MODE — Payment Gateway Bypass
+                                        </p>
+                                        <p class="extra-small text-muted mb-3">Simulates a successful payment. Performs all the same database operations (payments, matches, notifications) as a real PayHere transaction.</p>
+                                        <button id="testBuyBtn" class="btn btn-warning w-100 rounded-3 fw-bold py-2" data-match-id="<?= (int)$match_id ?>" data-csrf="<?= generateCSRFToken() ?>">
+                                            <i class="bi bi-lightning-charge-fill me-2"></i> Test Buy (Skip PayHere)
+                                        </button>
+                                        <div id="testBuyAlert" class="mt-2 d-none"></div>
+                                    </div>
+                                    <?php endif; ?>
+
                                     <div class="text-center">
                                         <small class="text-muted extra-small">
                                             <i class="bi bi-info-circle me-1"></i> Sandbox Test Cards available at <a href="https://support.payhere.lk/payhere-checkout/sandbox-testing" target="_blank" class="text-decoration-none">PayHere Docs</a>
@@ -292,4 +307,45 @@ require_once __DIR__ . '/../includes/navbar.php';
     </div>
 </div>
 
+<script>
+const testBuyBtn = document.getElementById('testBuyBtn');
+if (testBuyBtn) {
+    testBuyBtn.addEventListener('click', async function() {
+        const matchId  = parseInt(this.getAttribute('data-match-id'));
+        const csrf     = this.getAttribute('data-csrf');
+        const alertBox = document.getElementById('testBuyAlert');
+
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+        try {
+            const res = await fetch('../api/test_buy.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ match_id: matchId, csrf_token: csrf })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alertBox.className = 'alert alert-success rounded-3 py-2 px-3 small mt-2';
+                alertBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>' + data.data.message;
+                alertBox.classList.remove('d-none');
+                setTimeout(() => { window.location.href = 'matches.php?status=success&match_id=' + matchId; }, 1500);
+            } else {
+                alertBox.className = 'alert alert-danger rounded-3 py-2 px-3 small mt-2';
+                alertBox.textContent = data.error || 'Test purchase failed.';
+                alertBox.classList.remove('d-none');
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>Test Buy (Skip PayHere)';
+            }
+        } catch (err) {
+            alertBox.className = 'alert alert-danger rounded-3 py-2 px-3 small mt-2';
+            alertBox.textContent = 'Network error: ' + err.message;
+            alertBox.classList.remove('d-none');
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>Test Buy (Skip PayHere)';
+        }
+    });
+}
+</script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
