@@ -10,9 +10,12 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- --------------------------------------------------------
 -- Table structure for table `users`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
@@ -39,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- --------------------------------------------------------
 -- Table structure for table `farmer_profiles`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `farmer_profiles`;
 CREATE TABLE IF NOT EXISTS `farmer_profiles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -62,6 +66,7 @@ CREATE TABLE IF NOT EXISTS `farmer_profiles` (
 -- --------------------------------------------------------
 -- Table structure for table `harvest_listings`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `harvest_listings`;
 CREATE TABLE IF NOT EXISTS `harvest_listings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `farmer_id` int(11) NOT NULL,
@@ -88,6 +93,7 @@ CREATE TABLE IF NOT EXISTS `harvest_listings` (
 -- --------------------------------------------------------
 -- Table structure for table `order_requests`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `order_requests`;
 CREATE TABLE IF NOT EXISTS `order_requests` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `business_id` int(11) NOT NULL,
@@ -111,6 +117,7 @@ CREATE TABLE IF NOT EXISTS `order_requests` (
 -- --------------------------------------------------------
 -- Table structure for table `order_matches`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `order_matches`;
 CREATE TABLE IF NOT EXISTS `order_matches` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `order_id` int(11) NOT NULL,
@@ -141,6 +148,7 @@ CREATE TABLE IF NOT EXISTS `order_matches` (
 -- --------------------------------------------------------
 -- Table structure for table `agent_logs`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `agent_logs`;
 CREATE TABLE IF NOT EXISTS `agent_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `agent_type` varchar(50) NOT NULL,
@@ -158,6 +166,7 @@ CREATE TABLE IF NOT EXISTS `agent_logs` (
 -- --------------------------------------------------------
 -- Table structure for table `notifications`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -175,6 +184,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 -- --------------------------------------------------------
 -- Table structure for table `admin_audit_logs`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `admin_audit_logs`;
 CREATE TABLE IF NOT EXISTS `admin_audit_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `admin_id` int(11) NOT NULL,
@@ -193,6 +203,7 @@ CREATE TABLE IF NOT EXISTS `admin_audit_logs` (
 -- --------------------------------------------------------
 -- Table structure for table `payments`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `payments`;
 CREATE TABLE IF NOT EXISTS `payments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `order_match_id` int(11) NOT NULL,
@@ -210,6 +221,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
 -- --------------------------------------------------------
 -- Table structure for table `user_reviews`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `user_reviews`;
 CREATE TABLE IF NOT EXISTS `user_reviews` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `reviewer_id` int(11) NOT NULL,
@@ -232,6 +244,7 @@ CREATE TABLE IF NOT EXISTS `user_reviews` (
 -- --------------------------------------------------------
 -- Table structure for table `demand_cache`
 -- --------------------------------------------------------
+DROP TABLE IF EXISTS `demand_cache`;
 CREATE TABLE IF NOT EXISTS `demand_cache` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `district` varchar(100) NOT NULL DEFAULT '',
@@ -243,4 +256,5 @@ CREATE TABLE IF NOT EXISTS `demand_cache` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;
+SET FOREIGN_KEY_CHECKS = 1;
 
