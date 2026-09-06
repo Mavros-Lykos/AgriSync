@@ -69,7 +69,7 @@ try {
     $listStmt->execute([':farmer_id' => $user_id]);
     $recent_listings = $listStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fetch Recent Matches / Offers
+    // Fetch Recent Matches / Offers (Excluding closed deals)
     $matchStmt = $db->prepare("
         SELECT 
             m.id as match_id, m.matched_price, m.confidence_score, m.status as match_status, m.created_at,
@@ -78,7 +78,7 @@ try {
         FROM order_matches m
         JOIN order_requests o ON m.order_id = o.id
         JOIN users u ON m.business_id = u.id
-        WHERE m.farmer_id = :farmer_id
+        WHERE m.farmer_id = :farmer_id AND m.status NOT IN ('completed', 'rejected', 'expired')
         ORDER BY m.id DESC LIMIT 4
     ");
     $matchStmt->execute([':farmer_id' => $user_id]);
