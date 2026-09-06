@@ -226,7 +226,10 @@ async function deleteListing(id) {
     try {
         const res = await fetch('../api/delete_listing.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '<?= generateCSRFToken() ?>'
+            },
             body: JSON.stringify({ listing_id: id })
         });
         const data = await res.json();

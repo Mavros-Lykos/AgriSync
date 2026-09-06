@@ -12,6 +12,13 @@ checkRole(['farmer']);
 
 $farmer_id = (int)$_SESSION['user_id'];
 $action = sanitize($_GET['action'] ?? $_POST['action'] ?? '');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrf = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!validateCSRFToken($csrf)) {
+        jsonResponse(false, [], 'CSRF security token validation failed.', 403);
+    }
+}
 $db = getDbConnection();
 
 if ($action === 'get_dashboard') {

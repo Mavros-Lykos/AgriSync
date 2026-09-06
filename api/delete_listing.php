@@ -21,9 +21,15 @@ if (empty($_SESSION['user_id'])) {
 $user_id = (int) $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? '';
 
-// Read JSON input
 $input = json_decode(file_get_contents('php://input'), true);
 $listing_id = (int) ($input['listing_id'] ?? ($_POST['listing_id'] ?? 0));
+$csrf = $input['csrf_token'] ?? ($_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
+
+if (!validateCSRFToken($csrf)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'CSRF security token validation failed.']);
+    exit;
+}
 
 if ($listing_id <= 0) {
     http_response_code(400);
