@@ -168,7 +168,7 @@ async function respondMatch(matchId, decision) {
         formData.append('decision', decision);
         formData.append('csrf_token', '<?= generateCSRFToken() ?>');
 
-        const res = await fetch('<?= APP_URL ?>/api/farmer.php?action=respond_match', {
+        const res = await fetch('../api/farmer.php?action=respond_match', {
             method: 'POST',
             body: formData,
             headers: { 'X-CSRF-TOKEN': '<?= generateCSRFToken() ?>' }
