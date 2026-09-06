@@ -32,10 +32,7 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             
-            echo "Resetting Database with schema.sql..."
-            mysql -u '${{ secrets.DB_USER }}' -p'${{ secrets.DB_PASS }}' '${{ secrets.DB_NAME }}' < sql/schema.sql
-            
-            echo "Injecting Dummy Data with seed.sql..."
-            mysql -u '${{ secrets.DB_USER }}' -p'${{ secrets.DB_PASS }}' '${{ secrets.DB_NAME }}' < sql/seed.sql
+            echo "Resetting Database with live_sync.sql..."
+            mysql -u '${{ secrets.DB_USER }}' -p'${{ secrets.DB_PASS }}' '${{ secrets.DB_NAME }}' < sql/live_sync.sql
             
             echo "Deployment and Database Reset completed successfully!"
