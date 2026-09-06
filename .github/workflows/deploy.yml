@@ -1,6 +1,8 @@
 name: Manual Hostinger Deployment & DB Reset
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       confirm_reset:
