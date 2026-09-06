@@ -56,7 +56,7 @@ if ($action === 'update_status') {
         if ($target_type === 'match') {
             // Check order_matches table
             $stmt = $db->prepare("
-                SELECT m.id, m.order_id, m.listing_id, m.status, m.agreed_price, m.quantity_kg,
+                SELECT m.id, m.order_id, m.listing_id, m.status, m.matched_price, m.matched_quantity,
                        o.business_id, h.farmer_id
                 FROM order_matches m
                 JOIN order_requests o ON m.order_id = o.id
