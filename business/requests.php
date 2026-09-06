@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadRequests() {
         const status = statusFilter.value;
         try {
-            const res = await fetch(`<?= APP_URL ?>/api/business.php?action=get_requests&status=${status}`);
+            const res = await fetch(`../api/business.php?action=get_requests&status=${status}`);
             const data = await res.json();
 
             if (data.success) {
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const formData = new FormData(addRequestForm);
-            const res = await fetch('<?= APP_URL ?>/api/business.php?action=create_request', {
+            const res = await fetch('../api/place_order.php', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-CSRF-TOKEN': '<?= generateCSRFToken() ?>' }
