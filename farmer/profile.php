@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const formData = new FormData(profileEditForm);
-            const res = await fetch('<?= APP_URL ?>/api/farmer.php?action=update_profile', {
+            const res = await fetch('../api/farmer.php?action=update_profile', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-CSRF-TOKEN': formData.get('csrf_token') }
