@@ -113,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $app_url = defined('APP_URL') ? APP_URL : '';
                 redirect($app_url . '/farmer/listings.php?added=1');
             } catch (Throwable $e) {
+                file_put_contents(__DIR__ . '/../add_listing_error.log', "Add Harvest Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
                 error_log("Add Harvest Error: " . $e->getMessage());
                 $error = 'Unable to save harvest listing. Please try again.';
             }
