@@ -12,3 +12,12 @@ create_issues.php
 setup_github.php
 github_issue_format.md
 implementation_plan.md
+debug_listing.php
+test_add_listing.php
+test_broker.php
+scratch/
+index.html
+docs/VIDEO_PITCH_SCRIPT.md
+create_all_issues.php
+create_gap_issues.php
+create_gap_issues_2.php
