@@ -1,13 +1,7 @@
 <?php
 /**
  * AgriSync — Public Landing Page (TASK-095)
- * Premium front door showcasing the AI agricultural supply chain matchmaking ecosystem.
- */
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
+ * Premium front door showcasing the AI agricultural supply chain matchmaking ecosystem.*/
 require_once __DIR__ . '/config/session.php';
 require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/includes/functions.php';
